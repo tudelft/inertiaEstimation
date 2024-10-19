@@ -5,11 +5,12 @@ df, omegas, accelerations, times, flywheel_omegas = importDatafile("gyro_spinnin
 
 filter_cutoff = 10
 recomputeFilterCoefficients(filter_cutoff)
+dt = (times[-1] - times[0])/len(times)
+recomputeFilterCoefficients(filter_cutoff, dt)
 filtered_omegas = filterVectorSignal(omegas)
 filtered_flywheel_omegas = filterVectorSignal(flywheel_omegas)
 filtered_accelerations = filterVectorSignal(accelerations)
 
-dt = times[1] - times[0]
 
 jerks = differentiateVectorSignal(filtered_accelerations, dt)
 

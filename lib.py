@@ -80,9 +80,9 @@ def filterSignal(signal, cutoff_freq=global_filter_cutoff):
         _filter_coefs = scipy.signal.butter(2, cutoff_freq, output="ba", btype="lowpass", fs=4000)
         return scipy.signal.lfilter(_filter_coefs[0], _filter_coefs[1], signal)
 
-def recomputeFilterCoefficients(filter_cutoff):
+def recomputeFilterCoefficients(filter_cutoff, dt):
     global filter_coefs
-    filter_coefs = scipy.signal.butter(2, filter_cutoff, output="ba", btype="lowpass", fs=4000)
+    filter_coefs = scipy.signal.butter(2, filter_cutoff, output="ba", btype="lowpass", fs=1/dt)
 
 def filterVectorSignal(signal, **kwargs):
     res = []
