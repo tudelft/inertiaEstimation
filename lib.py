@@ -132,7 +132,7 @@ def computeI(angular_velocities, angular_accelerations, flywheel_angular_velocit
     B = []
     ATA = np.zeros(36).reshape(6, 6)
     for i in range(len(angular_velocities)):
-        omega = angular_velocities[i, :].flatten()
+        omega = angular_velocities[i].flatten()
         omega_dot = angular_accelerations[i]
         flywheel_omega = flywheel_angular_velocities[i]
         flywheel_omega_dot = flywheel_angular_accelerations[i]
@@ -152,7 +152,7 @@ def computeI(angular_velocities, angular_accelerations, flywheel_angular_velocit
         zeta = np.matrix([zeta_X, zeta_Y, zeta_Z]).reshape((3, 6))
 
         global Jflywheel
-        beta = -np.cross(omega, Jflywheel * flywheel_omega) - Jflywheel * flywheel_omega_dot
+        beta = np.cross(omega, Jflywheel * flywheel_omega) + Jflywheel * flywheel_omega_dot
         B.extend(beta)
 
         ATA += np.matmul(zeta.T, zeta)
@@ -223,7 +223,7 @@ def detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks):
         if not wasTumbling:
             if startsTumbling(times[i:i+2], absolute_omegas[i:i+2], absolute_accelerations[i:i+2], absolute_jerks[i:i+2]):
                 wasTumbling = True
-                start_indices.append(i)
+                start_indices.append(i + 50)
             else:
                 continue
         else:
@@ -232,3 +232,31 @@ def detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks):
                 end_indices.append(i)
                 continue
     return start_indices, end_indices
+
+
+def simulateThrow(inertiaTensor, times, omega_0, flywheel_omegas, flywheel_omega_dots):
+    omega = omega_0
+    omegas = []
+
+    for i in range(len(times) - 1):
+        w_times = times[i:i+2]
+        flywheel_angular_momentum = flywheel_omegas[i+1] * Jflywheel
+        flywheel_angular_momentum_dot = flywheel_omega_dots[i+1] * Jflywheel
+
+        # Initialise begin and end times for interval
+        t_1 = w_times[0]
+        t_2 = w_times[1]
+        dt = t_2 - t_1
+        ddt = dt / 100 # Iterate N times between datapoints
+
+        inv = np.linalg.inv(inertiaTensor)
+
+        for t in np.arange(t_1, t_2, ddt):
+            # Simulate by solving the Euler rotation equation for the angular acceleration and using it
+            # to numerically integrate the angular velocity
+            omega_dot = np.matmul(inv, -np.cross(omega, np.matmul(inertiaTensor, omega)) +
+                                  np.cross(omega, flywheel_angular_momentum) + flywheel_angular_momentum_dot)
+            omega = omega + omega_dot * ddt
+        omegas.append(omega)
+    omegas = np.array(omegas)
+    return omegas
