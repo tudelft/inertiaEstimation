@@ -23,7 +23,7 @@ def importDatafile(path, poles = 12):
 
     # Flywheel angular velocity in rad/s
     df["omegaFlywheel"] = df["erpm[0]"].values * 100 / (poles / 2) * 2 * math.pi / 60
-    flywheelOmega = np.array([np.zeros(len(df)), np.zeros(len(df)), df["omegaFlywheel"].values]).T
+    flywheelOmega = np.array([np.zeros(len(df)), np.zeros(len(df)), -df["omegaFlywheel"].values]).T
 
     omega = np.array([df["gyroADC[0]"].values,
                        df["gyroADC[1]"].values,
@@ -152,7 +152,7 @@ def computeI(angular_velocities, angular_accelerations, flywheel_angular_velocit
         zeta = np.matrix([zeta_X, zeta_Y, zeta_Z]).reshape((3, 6))
 
         global Jflywheel
-        beta = np.cross(omega, Jflywheel * flywheel_omega) + Jflywheel * flywheel_omega_dot
+        beta = -np.cross(omega, Jflywheel * flywheel_omega) - Jflywheel * flywheel_omega_dot
         B.extend(beta)
 
         ATA += np.matmul(zeta.T, zeta)
@@ -254,8 +254,8 @@ def simulateThrow(inertiaTensor, times, omega_0, flywheel_omegas, flywheel_omega
         for t in np.arange(t_1, t_2, ddt):
             # Simulate by solving the Euler rotation equation for the angular acceleration and using it
             # to numerically integrate the angular velocity
-            omega_dot = np.matmul(inv, -np.cross(omega, np.matmul(inertiaTensor, omega)) +
-                                  np.cross(omega, flywheel_angular_momentum) + flywheel_angular_momentum_dot)
+            omega_dot = np.matmul(inv, -np.cross(omega, np.matmul(inertiaTensor, omega)) -
+                                  np.cross(omega, flywheel_angular_momentum) - flywheel_angular_momentum_dot)
             omega = omega + omega_dot * ddt
         omegas.append(omega)
     omegas = np.array(omegas)

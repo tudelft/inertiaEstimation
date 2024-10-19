@@ -1,7 +1,7 @@
 from lib import *
 import lib
 
-df, omegas, accelerations, times, flywheel_omegas = importDatafile("gyro_spinning.csv")
+df, omegas, accelerations, times, flywheel_omegas = importDatafile("more_spin_with_flywheel.csv")
 
 # Prepare discrete filter coefficients
 filter_cutoff = 70
@@ -25,7 +25,7 @@ absolute_jerks = np.sqrt(jerks[:,0] ** 2 + jerks[:,1] ** 2 + jerks[:,2] ** 2)
 
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex="col", gridspec_kw={'height_ratios': [3, 1]})
 timePlotVector(times, filtered_omegas, ax=ax1, label="Filtered angular velocity", ylabel="Angular velocity (rad/s)")
-timePlotVector(times, filtered_flywheel_omegas, ax=ax2, label="Filtered flywheel angular velocity", ylabel="Flywheel angular velocity (rad/s)")
+timePlotVector(times, -filtered_flywheel_omegas, ax=ax2, label="Filtered flywheel angular velocity", ylabel="Flywheel angular velocity (rad/s)")
 
 # timePlotVector(times, omegas, ax=ax1, label="Angular velocity", ylabel="Angular velocity (rad/s)")
 # timePlotVector(times, omega_dots, ax=ax1, label="Angular acceleration", linestyle="dashed", alpha=0.7)
