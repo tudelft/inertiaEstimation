@@ -42,17 +42,18 @@ def buildTensor(x):
                      [x[3], x[4], x[5]]])
 
 def formatTicks(major=1000, minor=100):
-    loc = ticker.MultipleLocator(base=minor or 100)  # this locator puts ticks at regular intervals
-    plt.gca().xaxis.set_minor_locator(loc)
-    loc = ticker.MultipleLocator(base=major or 1000)  # this locator puts ticks at regular intervals
-    plt.gca().xaxis.set_major_locator(loc)
+    pythonstfu = True
+    # loc = ticker.MultipleLocator(base=minor or 100)  # this locator puts ticks at regular intervals
+    # plt.gca().xaxis.set_minor_locator(loc)
+    # loc = ticker.MultipleLocator(base=major or 1000)  # this locator puts ticks at regular intervals
+    # plt.gca().xaxis.set_major_locator(loc)
 
 def timePlot(t, var, ylabel="", minor=None, major=None, ax=plt, **kwargs):
     ax.plot(t * 1000, var, **kwargs)
 
     plt.xlabel("Time (ms)")
 
-    formatTicks(major, minor)
+    # formatTicks(major, minor)
 
     if len(ylabel) > 0:
         ax.set_ylabel(ylabel)
@@ -64,25 +65,20 @@ def timePlotVector(t, var, label="", ylabel="", minor=None, major=None, ax=plt, 
     ax.plot(t * 1000, (var.T[2]).T, label=f"{label} (z)", color="tab:green", **kwargs)
     plt.xlabel("Time (ms)")
 
-    formatTicks(major, minor)
+    # formatTicks(major, minor)
 
     if len(ylabel) > 0:
         ax.set_ylabel(ylabel)
     ax.legend()
 
 global_filter_cutoff = 1000
-filter_coefs = scipy.signal.butter(2, global_filter_cutoff, output="ba", btype="lowpass", fs=4000)
+filter_coefs = None
 def filterSignal(signal, cutoff_freq=global_filter_cutoff):
-    global filter_coefs
-    if (cutoff_freq == global_filter_cutoff):
-        return scipy.signal.lfilter(filter_coefs[0], filter_coefs[1], signal)
-    else:
-        _filter_coefs = scipy.signal.butter(2, cutoff_freq, output="ba", btype="lowpass", fs=4000)
-        return scipy.signal.lfilter(_filter_coefs[0], _filter_coefs[1], signal)
+    return scipy.signal.lfilter(filter_coefs[0], filter_coefs[1], signal)
 
 def recomputeFilterCoefficients(filter_cutoff, dt):
-    global filter_coefs
-    filter_coefs = scipy.signal.butter(2, filter_cutoff, output="ba", btype="lowpass", fs=1/dt)
+    # global filter_coefs
+    return scipy.signal.butter(2, filter_cutoff, output="ba", btype="lowpass", fs=1/dt)
 
 def filterVectorSignal(signal, **kwargs):
     res = []
@@ -90,7 +86,7 @@ def filterVectorSignal(signal, **kwargs):
         res.append(filterSignal(signal[:, i].flatten(), **kwargs).flatten())
     return np.array(res).T
 
-def derivativeCoefficients(n):
+def derivativeCoefficients(n, f):
     T = np.zeros(n * n).reshape(n, n)
     res = np.zeros(n)
     res[1] = 1
@@ -103,23 +99,31 @@ def derivativeCoefficients(n):
                 T[y, x] = 0
             else:
                 T[y, x] = (-x) ** y / math.factorial(y)
-    return np.flip(np.linalg.solve(T, res))
+    res = np.flip(np.linalg.solve(T, res))
 
-m = 3 # Order of accuracy + 1
+    deriv_coefs_kernel = np.zeros(len(res) * f)
+    for i, c in enumerate(res):
+        deriv_coefs_kernel[i * f] = c
+    return deriv_coefs_kernel * m / ((m + 1) * f)
+
+m = 4 # Order of accuracy + 1
 f = 1 #
-deriv_coefs = derivativeCoefficients(m).reshape(-1, 1)
+deriv_coefs = derivativeCoefficients(m, f).reshape(-1, 1)
+# def differentiateSignal(signal, dt):
+#     global deriv_coefs
+#     h = dt
+#
+#     signal = np.array(signal)
+#     sig = signal.reshape(-1)
+#     deriv_coefs = deriv_coefs.flatten()
+#
+#     new_signal = np.convolve(sig, np.flip(deriv_coefs), "same") / h
+#     new_signal[0] = new_signal[1]
+#     new_signal[-1] = new_signal[-2]
+#     return new_signal
+
 def differentiateSignal(signal, dt):
-    global deriv_coefs
-    h = dt * (m + 1) * f
-
-    signal = np.array(signal)
-    sig = signal.reshape(-1)
-    deriv_coefs = deriv_coefs.flatten()
-
-    new_signal = np.convolve(sig, np.flip(deriv_coefs), "same") * m/h
-    new_signal[0] = new_signal[1]
-    new_signal[-1] = new_signal[-2]
-    return new_signal
+    return scipy.signal.savgol_filter(signal, window_length=100, polyorder=1, delta=dt, deriv=1)
 
 def differentiateVectorSignal(signal, dt):
     res = []
@@ -214,16 +218,15 @@ def stopsTumbling(times, absolute_omegas, absolute_accelerations, absolute_jerks
 
     return stops_tumbling
 
-wasTumbling = False
 def detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks):
     start_indices = []
     end_indices = []
+    wasTumbling = False
     for i in range(len(absolute_omegas) - 1):
-        global wasTumbling
         if not wasTumbling:
             if startsTumbling(times[i:i+2], absolute_omegas[i:i+2], absolute_accelerations[i:i+2], absolute_jerks[i:i+2]):
                 wasTumbling = True
-                start_indices.append(i + 50)
+                start_indices.append(i)
             else:
                 continue
         else:
@@ -247,7 +250,7 @@ def simulateThrow(inertiaTensor, times, omega_0, flywheel_omegas, flywheel_omega
         t_1 = w_times[0]
         t_2 = w_times[1]
         dt = t_2 - t_1
-        ddt = dt / 100 # Iterate N times between datapoints
+        ddt = dt / 50 # Iterate N times between datapoints
 
         inv = np.linalg.inv(inertiaTensor)
 
