@@ -10,7 +10,7 @@ def function_to_optimise(x):
         df, omegas, accelerations, times, flywheel_omegas = importDatafile(f)
 
         # Prepare discrete filter coefficients
-        filter_cutoff = 70
+        filter_cutoff = x[0]
         dt = (times[-1] - times[0])/len(times)
         lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
 
@@ -38,7 +38,8 @@ def function_to_optimise(x):
         starts, ends = detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks)
 
         # Set flywheel inertia
-        lib.Jflywheel = x[0] # kg*m^2
+        # lib.Jflywheel = x[0] # kg*m^2
+        lib.Jflywheel = 9.909e-08
 
         # Compute inertia tensor with filtered data
         I = computeI(filtered_omegas[starts[0]:],
@@ -57,6 +58,6 @@ def function_to_optimise(x):
     print(error)
     return error
 
-x = scipy.optimize.minimize(function_to_optimise, np.array([9.42e-8]), tol=1e-16)
+x = scipy.optimize.minimize(function_to_optimise, np.array([70]), tol=1e-16)
 print(x)
 print(x.x)

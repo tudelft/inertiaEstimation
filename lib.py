@@ -171,7 +171,11 @@ stop_threshold_jerk = 20
 betweenPeaks = False
 min_omega = 2
 
-def startsTumbling(times, absolute_omegas, absolute_accelerations, absolute_jerks):
+def startsTumbling(times, absolute_omegas, absolute_accelerations, absolute_jerks, flywheel_omegas):
+    if abs(flywheel_omegas[-1][2]) > 0:
+        return True
+    else:
+        return False
     # print(times[-1])
     tumbling = False
 
@@ -200,6 +204,7 @@ def startsTumbling(times, absolute_omegas, absolute_accelerations, absolute_jerk
     return tumbling
 
 def stopsTumbling(times, absolute_omegas, absolute_accelerations, absolute_jerks):
+    return False
     stops_tumbling = False
 
     jerk_old = absolute_jerks[-2]
@@ -218,13 +223,13 @@ def stopsTumbling(times, absolute_omegas, absolute_accelerations, absolute_jerks
 
     return stops_tumbling
 
-def detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks):
+def detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks, flywheel_omegas):
     start_indices = []
     end_indices = []
     wasTumbling = False
     for i in range(len(absolute_omegas) - 1):
         if not wasTumbling:
-            if startsTumbling(times[i:i+2], absolute_omegas[i:i+2], absolute_accelerations[i:i+2], absolute_jerks[i:i+2]):
+            if startsTumbling(times[i:i+2], absolute_omegas[i:i+2], absolute_accelerations[i:i+2], absolute_jerks[i:i+2], flywheel_omegas[i:i+2]):
                 wasTumbling = True
                 start_indices.append(i)
             else:
