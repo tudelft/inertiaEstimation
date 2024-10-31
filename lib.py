@@ -41,6 +41,9 @@ def buildTensor(x):
                      [x[1], x[2], x[4]],
                      [x[3], x[4], x[5]]])
 
+def buildVector(t):
+    return np.array([t[0,0], t[1,0], t[1,1], t[2,0], t[2,1], t[2,2]])
+
 def formatTicks(major=1000, minor=100):
     pythonstfu = True
     # loc = ticker.MultipleLocator(base=minor or 100)  # this locator puts ticks at regular intervals
@@ -122,13 +125,13 @@ deriv_coefs = derivativeCoefficients(m, f).reshape(-1, 1)
 #     new_signal[-1] = new_signal[-2]
 #     return new_signal
 
-def differentiateSignal(signal, dt):
-    return scipy.signal.savgol_filter(signal, window_length=100, polyorder=1, delta=dt, deriv=1)
+def differentiateSignal(signal, dt, window_length=86):
+    return scipy.signal.savgol_filter(signal, window_length=window_length, polyorder=1, delta=dt, deriv=1)
 
-def differentiateVectorSignal(signal, dt):
+def differentiateVectorSignal(signal, dt, *args, **kwargs):
     res = []
     for i in range(signal.shape[1]):
-        res.append(differentiateSignal(signal.T[i], dt))
+        res.append(differentiateSignal(signal.T[i], dt, *args, **kwargs))
     return np.array(res).T
 
 def computeI(angular_velocities, angular_accelerations, flywheel_angular_velocities, flywheel_angular_accelerations):
@@ -162,6 +165,50 @@ def computeI(angular_velocities, angular_accelerations, flywheel_angular_velocit
         ATA += np.matmul(zeta.T, zeta)
     inertiaCoefficients, res, rank, s = np.linalg.lstsq(A, B, rcond=None)
     return buildTensor(inertiaCoefficients)
+
+def computeX(angular_velocities, angular_accelerations, linear_accelerations):
+    A = []
+    B = []
+    for i in range(len(linear_accelerations)):
+        a = linear_accelerations[i].reshape(-1, 1)
+        omega = angular_velocities[i].flatten()
+        omega_dot = angular_accelerations[i]
+
+        # Matrix to find the distance between IMU and CG
+        cg_submatrix_X = [-omega[1] ** 2 - omega[2] ** 2, omega[0] * omega[1] - omega_dot[2],
+                          omega[0] * omega[2] + omega_dot[1]]
+        cg_submatrix_Y = [omega[0] * omega[1] + omega_dot[2], -omega[0] ** 2 - omega[2] ** 2,
+                          omega[1] * omega[2] - omega_dot[0]]
+        cg_submatrix_Z = [omega[0] * omega[2] - omega_dot[1],
+                          omega[1] * omega[2] + omega_dot[0], -omega[0] ** 2 - omega[1] ** 2]
+        cg_submatrix = [cg_submatrix_X, cg_submatrix_Y, cg_submatrix_Z]
+        A.extend(cg_submatrix)
+
+        a_cg = np.zeros((3, 1))  # CG linear acceleration, assumed zero
+        a_difference = a_cg - a
+        B.extend(a_difference)
+
+    a = np.array(A).reshape(-1, 3)
+    b = np.array(B).reshape(-1, 1)
+    x, res, rank, s = np.linalg.lstsq(a, b, rcond=None)
+    return x
+
+def kroneckerDelta(i, j):
+    return int(i == j)
+
+def parallelAxisTheorem(m, r):
+    res = np.zeros((3, 3))
+    r_norm_squared = np.dot(r.T, r)
+    for i in range(len(r)):
+        for j in range(len(r)):
+            res[i, j] = m * (r_norm_squared * kroneckerDelta(i, j) - r[i] * r[j])
+    return res
+
+def translateI(I_test, I_dev, m_obj, r_obj):
+    # print(r_obj)
+    # print(-parallelAxisTheorem(m_obj, r_obj))
+    # print(I_test - I_dev)
+    return I_test - I_dev - parallelAxisTheorem(m_obj, r_obj)
 
 ### Throw Detection ###
 start_threshold = 25
@@ -255,7 +302,7 @@ def simulateThrow(inertiaTensor, times, omega_0, flywheel_omegas, flywheel_omega
         t_1 = w_times[0]
         t_2 = w_times[1]
         dt = t_2 - t_1
-        ddt = dt / 50 # Iterate N times between datapoints
+        ddt = dt / 100 # Iterate N times between datapoints
 
         inv = np.linalg.inv(inertiaTensor)
 
