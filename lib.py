@@ -14,9 +14,9 @@ def importDatafile(path, poles = 12):
     df["gyroADC[2]"] =  df["gyroADC[2]"] * math.pi / 180 / 16.384
 
     # Linear acceleration in m/s/s
-    df["accSmooth[0]"] = -df["accSmooth[0]"] * 9.81 / 2084
-    df["accSmooth[1]"] = -df["accSmooth[1]"] * 9.81 / 2084
-    df["accSmooth[2]"] =  df["accSmooth[2]"] * 9.81 / 2084
+    df["accSmooth[0]"] = -df["accSmooth[0]"] * 9.81 / 2048
+    df["accSmooth[1]"] = -df["accSmooth[1]"] * 9.81 / 2048
+    df["accSmooth[2]"] =  df["accSmooth[2]"] * 9.81 / 2048
 
     # Time axis in s
     df["time"] = (df["time"] - df["time"].min()) / 1e6
@@ -26,11 +26,11 @@ def importDatafile(path, poles = 12):
     flywheelOmega = np.array([np.zeros(len(df)), np.zeros(len(df)), -df["omegaFlywheel"].values]).T
 
     omega = np.array([df["gyroADC[0]"].values,
-                       df["gyroADC[1]"].values,
-                       df["gyroADC[2]"].values]).T
+                      df["gyroADC[1]"].values,
+                      df["gyroADC[2]"].values]).T
     a = np.array([df["accSmooth[0]"].values,
-                   df["accSmooth[1]"].values,
-                   df["accSmooth[2]"].values]).T
+                  df["accSmooth[1]"].values,
+                  df["accSmooth[2]"].values]).T
 
     return df, omega, a, df["time"].values, flywheelOmega
 
@@ -128,6 +128,16 @@ deriv_coefs = derivativeCoefficients(m, f).reshape(-1, 1)
 def differentiateSignal(signal, dt, window_length=86):
     return scipy.signal.savgol_filter(signal, window_length=window_length, polyorder=1, delta=dt, deriv=1)
 
+def delaySavGolFilterVectorSignal(signal, *args, **kwargs):
+    res = []
+    for i in range(signal.shape[1]):
+        res.append(delaySavGolFilterSignal(signal.T[i], *args, **kwargs))
+    return np.array(res).T
+
+def delaySavGolFilterSignal(signal, window_length=86):
+    return scipy.signal.savgol_filter(signal, window_length=window_length, polyorder=1)
+
+
 def differentiateVectorSignal(signal, dt, *args, **kwargs):
     res = []
     for i in range(signal.shape[1]):
@@ -204,11 +214,10 @@ def parallelAxisTheorem(m, r):
             res[i, j] = m * (r_norm_squared * kroneckerDelta(i, j) - r[i] * r[j])
     return res
 
-def translateI(I_test, I_dev, m_obj, r_obj):
-    # print(r_obj)
-    # print(-parallelAxisTheorem(m_obj, r_obj))
-    # print(I_test - I_dev)
-    return I_test - I_dev - parallelAxisTheorem(m_obj, r_obj)
+def translateI(I_test, I_dev, m_obj, m_dev, x_dev, x_test):
+    r = (m_dev / m_obj) * (x_dev - x_test)
+    s = x_test - x_dev
+    return I_test - parallelAxisTheorem(m_dev, s) - I_dev - parallelAxisTheorem(m_obj, r)
 
 ### Throw Detection ###
 start_threshold = 25
@@ -223,7 +232,6 @@ def startsTumbling(times, absolute_omegas, absolute_accelerations, absolute_jerk
         return True
     else:
         return False
-    # print(times[-1])
     tumbling = False
 
     jerk_old = absolute_jerks[-2]

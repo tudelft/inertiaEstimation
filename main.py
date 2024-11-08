@@ -10,7 +10,7 @@ for (dirpath, dirnames, filenames) in os.walk("input"):
         df, omegas, accelerations, times, flywheel_omegas = importDatafile(f)
 
         # Prepare discrete filter coefficients
-        filter_cutoff = 86
+        filter_cutoff = 85
         dt = (times[-1] - times[0])/len(times)
         lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
 
@@ -24,6 +24,10 @@ for (dirpath, dirnames, filenames) in os.walk("input"):
         omega_dots = differentiateVectorSignal(filtered_omegas, dt)
         # omega_dots = filterVectorSignal(omega_dots)
         flywheel_omega_dots = differentiateVectorSignal(filtered_flywheel_omegas, dt)
+
+        filtered_omegas = delaySavGolFilterVectorSignal(filtered_omegas)
+        filtered_flywheel_omegas = delaySavGolFilterVectorSignal(filtered_flywheel_omegas)
+        filtered_accelerations = delaySavGolFilterVectorSignal(filtered_omegas)
 
         # Find lengths of filtered values
         absolute_accelerations = np.sqrt(accelerations[:,0] ** 2 +
@@ -51,11 +55,6 @@ for (dirpath, dirnames, filenames) in os.walk("input"):
              continue
              # plt.show()
              # sys.exit()
-        else:
-            for s in starts:
-                ax1.axvline([times[s] * 1e3], linestyle="dashed", color="gray")
-            for e in ends:
-                ax1.axvline([times[s] * 1e3], linestyle="dotted", color="darkgray")
 
         # Set flywheel inertia
         # lib.Jflywheel = 9.42e-8 # kg*m^2
@@ -64,23 +63,29 @@ for (dirpath, dirnames, filenames) in os.walk("input"):
         # lib.Jflywheel = 1.32905077e-07
         # lib.Jflywheel = 9.909e-08 # kg*m^2
 
+        throw_offset = +400
+
         # Compute inertia tensor with filtered data
-        I = computeI(filtered_omegas[starts[0]:],
-                     omega_dots[starts[0]:],
-                     filtered_flywheel_omegas[starts[0]:],
-                     flywheel_omega_dots[starts[0]:])
-        x = computeX(filtered_omegas[starts[0]:],
-                     omega_dots[starts[0]:],
-                     filtered_accelerations[starts[0]:])
+        I = computeI(filtered_omegas[starts[0]+throw_offset:],
+                     omega_dots[starts[0]+throw_offset:],
+                     filtered_flywheel_omegas[starts[0]+throw_offset:],
+                     flywheel_omega_dots[starts[0]+throw_offset:])
+        x = computeX(filtered_omegas[starts[0]+throw_offset:],
+                     omega_dots[starts[0]+throw_offset:],
+                     filtered_accelerations[starts[0]+throw_offset:])
         print(I)
-        print(x)
-        #
+
         simulation_omegas = simulateThrow(I,
-                                          times[starts[0]:],
-                                          filtered_omegas[starts[0]],
-                                          filtered_flywheel_omegas[starts[0]:],
-                                          flywheel_omega_dots[starts[0]:])
-        timePlotVector(times[starts[0]+1:], simulation_omegas, label="Simulation fit", ax=ax1, linestyle="dashed", alpha=0.8)
+                                          times[starts[0]+throw_offset:],
+                                          filtered_omegas[starts[0]+throw_offset],
+                                          filtered_flywheel_omegas[starts[0]+throw_offset:],
+                                          flywheel_omega_dots[starts[0]+throw_offset:])
+        timePlotVector(times[starts[0]+throw_offset+1:], simulation_omegas, label="Simulation fit", ax=ax1, linestyle="dashed", alpha=0.8)
+
+        for s in starts:
+            ax1.axvline([times[s + throw_offset] * 1e3], linestyle="dashed", color="gray")
+        for e in ends:
+            ax1.axvline([times[e + throw_offset] * 1e3], linestyle="dotted", color="darkgray")
 
         # formatTicks(100, 20)
         plt.tight_layout()
