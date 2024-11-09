@@ -29,7 +29,7 @@ def importDatafile(path, poles = 12, importer=None):
         df = pd.read_csv(path)
     elif importer == "bfl":
         # load module on demand, as it may not be available
-        sys.path.append(os.path.join(os.getcwd(), "ext/indiflightSupport/LogAnalysis"))
+        sys.path.append(os.path.join(os.path.dirname(__file__), "ext/indiflightSupport/LogAnalysis"))
         from indiflightLogTools import IndiflightLog
         log = IndiflightLog(path)
         df = log.raw.copy()
