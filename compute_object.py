@@ -4,8 +4,10 @@ from lib import *
 import lib
 import os
 
-device_files = ["LOG00030.BFL.csv", "LOG00033.BFL.csv", "LOG00034.BFL.csv"]
-object_files = ["LOG00035.BFL.csv", "LOG00036.BFL.csv", "LOG00037.BFL.csv", "LOG00038.BFL.csv"]
+LOGFILE_PATH = "input/raw"
+
+device_files = ["LOG00030.BFL", "LOG00033.BFL", "LOG00034.BFL"]
+object_files = ["LOG00035.BFL", "LOG00036.BFL", "LOG00037.BFL", "LOG00038.BFL"]
 filelists = [device_files, object_files]
 
 
@@ -25,7 +27,8 @@ def optim(optimisation_variables):
         for f in files:
             # print(f"== [ {f} ] ==")
 
-            df, omegas, accelerations, times, flywheel_omegas = importDatafile(f)
+            df, omegas, accelerations, times, flywheel_omegas \
+                = importDatafile(os.path.join(LOGFILE_PATH, f))
 
             # Prepare discrete filter coefficients
             filter_cutoff = 85  # [Hz]

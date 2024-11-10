@@ -1,0 +1,3 @@
+[submodule "ext/indiflightSupport"]
+	path = ext/indiflightSupport
+	url = https://github.com/tudelft/indiflightSupport

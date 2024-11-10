@@ -1,13 +1,16 @@
 from lib import *
 import lib
 
+LOGFILE_PATH = "input/archive"
+
 files = ["bonus_test.csv", "more_spin_with_flywheel.csv", "counters_rotation.csv"]
 
 # x[0] will be the filter cutoff threshold, and x[1] the flywheel inertia
 def function_to_optimise(x):
     file_inertias = []
     for f in files:
-        df, omegas, accelerations, times, flywheel_omegas = importDatafile(f)
+        df, omegas, accelerations, times, flywheel_omegas \
+            = importDatafile(os.path.join(LOGFILE_PATH, f))
 
         # Prepare discrete filter coefficients
         filter_cutoff = x[0]

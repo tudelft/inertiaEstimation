@@ -4,10 +4,13 @@ from lib import *
 import lib
 import os
 
-for (dirpath, dirnames, filenames) in os.walk("input"):
+LOGFILE_PATH = "input/raw"
+
+for (dirpath, dirnames, filenames) in os.walk(LOGFILE_PATH):
     for f in filenames:
         print(f)
-        df, omegas, accelerations, times, flywheel_omegas = importDatafile(f)
+        df, omegas, accelerations, times, flywheel_omegas \
+            = importDatafile(os.path.join(LOGFILE_PATH, f))
 
         # Prepare discrete filter coefficients
         filter_cutoff = 85

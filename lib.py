@@ -5,8 +5,34 @@ import matplotlib.ticker as ticker
 import numpy as np
 import scipy
 
-def importDatafile(path, poles = 12):
-    df = pd.read_csv("input/" + path)
+import sys
+import os
+
+SUPPORTED_IMPOTERS = ["csv", "bfl"]
+
+def importDatafile(path, poles = 12, importer=None):
+    # importer can be "csv" or "bfl" of None. 
+    # if importer=None, then it goes by file extension
+
+    if importer is None:
+        # try to guess which importer to use by file extension
+        extension = os.path.splitext(path)[-1][1:].lower()
+        if extension not in SUPPORTED_IMPOTERS:
+            raise ValueError(f"Could not determine file importer for file {path}: not in {SUPPORTED_IMPOTERS}")
+        importer = extension
+    else:
+        # force use of that importer, if available
+        if importer not in SUPPORTED_IMPOTERS:
+            raise ValueError(f"Importer {importer} not supported. Must be one of {SUPPORTED_IMPOTERS}")
+
+    if importer == "csv":
+        df = pd.read_csv(path)
+    elif importer == "bfl":
+        # load module on demand, as it may not be available
+        sys.path.append(os.path.join(os.path.dirname(__file__), "ext/indiflightSupport/LogAnalysis"))
+        from indiflightLogTools import IndiflightLog
+        log = IndiflightLog(path)
+        df = log.raw.copy()
 
     # Angular velocities in rad/s
     df["gyroADC[0]"] = -df["gyroADC[0]"] * math.pi / 180 / 16.384
