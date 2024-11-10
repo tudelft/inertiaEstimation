@@ -8,7 +8,7 @@ import scipy
 import sys
 import os
 
-SUPPORTED_IMPOTERS = ["csv", "bfl"]
+SUPPORTED_IMPORTERS = ["csv", "bfl"]
 
 def importDatafile(path, poles = 12, importer=None):
     # importer can be "csv" or "bfl" of None. 
@@ -17,13 +17,13 @@ def importDatafile(path, poles = 12, importer=None):
     if importer is None:
         # try to guess which importer to use by file extension
         extension = os.path.splitext(path)[-1][1:].lower()
-        if extension not in SUPPORTED_IMPOTERS:
-            raise ValueError(f"Could not determine file importer for file {path}: not in {SUPPORTED_IMPOTERS}")
+        if extension not in SUPPORTED_IMPORTERS:
+            raise ValueError(f"Could not determine file importer for file {path}: not in {SUPPORTED_IMPORTERS}")
         importer = extension
     else:
         # force use of that importer, if available
-        if importer not in SUPPORTED_IMPOTERS:
-            raise ValueError(f"Importer {importer} not supported. Must be one of {SUPPORTED_IMPOTERS}")
+        if importer not in SUPPORTED_IMPORTERS:
+            raise ValueError(f"Importer {importer} not supported. Must be one of {SUPPORTED_IMPORTERS}")
 
     if importer == "csv":
         df = pd.read_csv(path)
