@@ -51,8 +51,8 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         timePlotVector(times, filtered_omegas, ax=ax1, label="Filtered", alpha=0.5)
         # timePlotVector(times, omega_dots, ax=ax1, label="Angular acceleration", linestyle="dashed", alpha=0.7)
         # timePlotVector(times, flywheel_omega_dots, ax=ax2, label="Flywheel angular acceleration", linestyle="dashed", alpha=0.7)
-        # timePlotVector(times, -filtered_flywheel_omegas, ax=ax2, label="Filtered", ylabel=r"${\omega}_f$ (rad/s)")
         timePlotVector(times, flywheel_omegas, ax=ax2, label="Measured", ylabel=r"${\omega}_f$ (rad/s)")
+        timePlotVector(times, filtered_flywheel_omegas, ax=ax2, label="Filtered", ylabel=r"${\omega}_f$ (rad/s)", alpha=0.5)
         ax2.invert_yaxis()
 
         starts, ends = detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks, flywheel_omegas)
@@ -88,6 +88,8 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
                                           filtered_flywheel_omegas[starts[0]+throw_offset:],
                                           flywheel_omega_dots[starts[0]+throw_offset:])
         timePlotVector(times[starts[0]+throw_offset+1:], simulation_omegas, label="Simulated", ax=ax1, linestyle="dashed", alpha=0.8)
+
+        ax2.get_legend().remove()
 
         for s in starts:
             ax1.axvline([times[s + throw_offset] * 1e3], linestyle="dashed", color="gray")
