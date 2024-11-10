@@ -4,7 +4,7 @@ from lib import *
 import lib
 import os
 
-LOGFILE_PATH = "input/raw"
+LOGFILE_PATH = "input/box_experiment/"
 
 for (dirpath, dirnames, filenames) in os.walk(LOGFILE_PATH):
     for f in filenames:
