@@ -29,7 +29,7 @@ def optim(optimisation_variables):
                     = importDatafile(os.path.join(dirpath, f))
 
                 # Prepare discrete filter coefficients
-                filter_cutoff = 85  # [Hz]
+                filter_cutoff = optimisation_variables[0]  # [Hz]
                 dt = (times[-1] - times[0]) / len(times)
                 lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
 
@@ -60,7 +60,7 @@ def optim(optimisation_variables):
                     print("No throws detected")
                     continue
                 # lib.Jflywheel = 8.430e-08  # kg*m^2
-                lib.Jflywheel = optimisation_variables[0]
+                lib.Jflywheel = optimisation_variables[1]
 
                 throw_offset = 400
 
@@ -113,7 +113,7 @@ def optim(optimisation_variables):
     # error = ((I - I_true)**2).mean() / ((I + I_true)**2).mean()
     # error = ((I - I_true) @ np.linalg.inv(I + I_true)).sum()
     print(f"* Error:    {error:6.15e}")
-    print(f"* Flywheel inertia: {optimisation_variables[0]:6.15e}")
+    print(f"* Flywheel inertia: {optimisation_variables[1]:6.15e}")
 
     lambdas, eigenvectors = np.linalg.eigh(I)
     principal_axis_order = np.diag(I).argsort()
@@ -131,12 +131,12 @@ def optim(optimisation_variables):
 
     return error
 print("========/[ Optimisation ]\========")
-# x = scipy.optimize.minimize(optim, [8.830e-08], tol=1e-16, method="Nelder-Mead")
+x = scipy.optimize.minimize(optim, [100, 8.46746037e-08], tol=1e-16, method="Nelder-Mead")
 # x = scipy.optimize.minimize(optim, [0.173, 2701 * 0.070 * 0.060 * 0.030], tol=1e-16)
-# print(x)
-# print(x.x)
+print(x)
+print(x.x)
 
-print(optim([8.467e-08]))
+# print(optim([8.467e-08]))
 
 print("========\[ Optimisation ]/========\n")
 
