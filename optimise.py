@@ -3,7 +3,7 @@ import lib
 
 LOGFILE_PATH = "input/archive"
 
-files = ["bonus_test.csv", "more_spin_with_flywheel.csv", "counters_rotation.csv"]
+files = ["bonus_test.csv", "more_spin_with_flywheel.csv"]
 
 # x[0] will be the filter cutoff threshold, and x[1] the flywheel inertia
 def function_to_optimise(x):
@@ -38,7 +38,7 @@ def function_to_optimise(x):
                                  jerks[:,1] ** 2 +
                                  jerks[:,2] ** 2)
 
-        starts, ends = detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks)
+        starts, ends = detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks, flywheel_omegas)
 
         # Set flywheel inertia
         # lib.Jflywheel = x[0] # kg*m^2
