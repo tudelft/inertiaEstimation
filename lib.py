@@ -86,7 +86,7 @@ def timePlot(t, var, ylabel="", minor=None, major=None, ax=plt, **kwargs):
 
     if len(ylabel) > 0:
         ax.set_ylabel(ylabel)
-    ax.legend()
+    ax.legend(bbox_to_anchor=(1.02, 0.5), loc="center left")
 
 def timePlotVector(t, var, label="", ylabel="", minor=None, major=None, ax=plt, **kwargs):
     ax.plot(t * 1000, (var.T[0]).T, label=f"{label} (x)", color="tab:blue", **kwargs)
@@ -98,7 +98,7 @@ def timePlotVector(t, var, label="", ylabel="", minor=None, major=None, ax=plt, 
 
     if len(ylabel) > 0:
         ax.set_ylabel(ylabel)
-    ax.legend()
+    ax.legend(bbox_to_anchor=(1.02, 0.5), loc="center left")
 
 global_filter_cutoff = 1000
 filter_coefs = None

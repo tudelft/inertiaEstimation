@@ -3,14 +3,16 @@ import sys
 from lib import *
 import lib
 import os
+import pathlib
 
-LOGFILE_PATH = "input/box_experiment/"
+LOGFILE_PATH = "block_experiment/device"
+LOGFILES_ROOT = "input"
 
-for (dirpath, dirnames, filenames) in os.walk(LOGFILE_PATH):
+for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFILE_PATH)):
     for f in filenames:
         print(f)
         df, omegas, accelerations, times, flywheel_omegas \
-            = importDatafile(os.path.join(LOGFILE_PATH, f))
+            = importDatafile(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, f))
 
         # Prepare discrete filter coefficients
         filter_cutoff = 85
@@ -44,12 +46,12 @@ for (dirpath, dirnames, filenames) in os.walk(LOGFILE_PATH):
                                  jerks[:,2] ** 2)
 
         # # Initialise plot
-        fig, (ax1, ax2) = plt.subplots(2, 1, sharex="col", gridspec_kw={'height_ratios': [3, 1]})
-        timePlotVector(times, omegas, ax=ax1, label="Angular velocity", ylabel="Angular velocity (rad/s)")
-        timePlotVector(times, filtered_omegas, ax=ax1, label="Filtered angular velocity", alpha=0.5)
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex="col", gridspec_kw={'height_ratios': [2, 1]})
+        timePlotVector(times, omegas, ax=ax1, label="Measured", ylabel=r"${\omega}$ (rad/s)")
+        timePlotVector(times, filtered_omegas, ax=ax1, label="Filtered", alpha=0.5)
         # timePlotVector(times, omega_dots, ax=ax1, label="Angular acceleration", linestyle="dashed", alpha=0.7)
         # timePlotVector(times, flywheel_omega_dots, ax=ax2, label="Flywheel angular acceleration", linestyle="dashed", alpha=0.7)
-        timePlotVector(times, -filtered_flywheel_omegas, ax=ax2, label="Filtered flywheel angular velocity", ylabel="Flywheel angular velocity (rad/s)")
+        timePlotVector(times, -filtered_flywheel_omegas, ax=ax2, label="Filtered", ylabel=r"${\omega}_f$ (rad/s)")
 
         starts, ends = detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks, flywheel_omegas)
 
@@ -83,12 +85,22 @@ for (dirpath, dirnames, filenames) in os.walk(LOGFILE_PATH):
                                           filtered_omegas[starts[0]+throw_offset],
                                           filtered_flywheel_omegas[starts[0]+throw_offset:],
                                           flywheel_omega_dots[starts[0]+throw_offset:])
-        timePlotVector(times[starts[0]+throw_offset+1:], simulation_omegas, label="Simulation fit", ax=ax1, linestyle="dashed", alpha=0.8)
+        timePlotVector(times[starts[0]+throw_offset+1:], simulation_omegas, label="Simulated", ax=ax1, linestyle="dashed", alpha=0.8)
 
         for s in starts:
             ax1.axvline([times[s + throw_offset] * 1e3], linestyle="dashed", color="gray")
         for e in ends:
             ax1.axvline([times[e + throw_offset] * 1e3], linestyle="dotted", color="darkgray")
+
+        ax1.set_xlim([times[starts[0]] * 1e3, times[-1] * 1e3])
+
+        ax1.grid()
+        ax2.grid()
+
+        fig.set_size_inches(10, 4)
+        filename = os.path.splitext(os.path.join("output", LOGFILE_PATH, f))[0] + "-simulation.pdf"
+        pathlib.Path(os.path.dirname(filename)).mkdir(parents=True, exist_ok=True)
+        plt.savefig(filename, transparent=True, dpi=300, format="pdf", bbox_inches="tight")
 
         # formatTicks(100, 20)
         plt.tight_layout()
