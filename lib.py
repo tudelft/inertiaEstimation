@@ -177,8 +177,8 @@ def computeI(angular_velocities, angular_accelerations, flywheel_angular_velocit
     for i in range(len(angular_velocities)):
         omega = angular_velocities[i].flatten()
         omega_dot = angular_accelerations[i]
-        flywheel_omega = flywheel_angular_velocities[i]
-        flywheel_omega_dot = flywheel_angular_accelerations[i]
+        flywheel_omega = flywheel_angular_velocities[i] + omega
+        flywheel_omega_dot = flywheel_angular_accelerations[i] + omega_dot
 
         zeta_X = [omega_dot[0], -omega[2] * omega[0] + omega_dot[1], -omega[2] * omega[1],
                   omega[1] * omega[0] + omega_dot[2], omega[1] ** 2 - omega[2] ** 2,
