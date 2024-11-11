@@ -1,4 +1,5 @@
 from fontTools.mtiLib import build
+import scipy.spatial
 
 from lib import *
 import lib
@@ -123,8 +124,10 @@ def optim(optimisation_variables):
 
     principal_transform = np.linalg.inv(P) @ I @ P @ np.linalg.inv(I)
     rotation = scipy.spatial.transform.Rotation.from_matrix(principal_transform)
-    rotation_euler = rotation.as_euler('zyx')  # [rad]
-    total_rotation = np.linalg.norm(rotation_euler)
+    #rotation_euler = rotation.as_euler('zyx')  # [rad]
+    #total_rotation = np.linalg.norm(rotation_euler)
+    rotation_rvec = rotation.as_rotvec()
+    total_rotation = np.linalg.norm(rotation_rvec)
 
     print(f"Inertial error:   {eigval_error * 100:0.2f}%")
     print(f"Alignment error:  {total_rotation * 180 / math.pi:0.2f}°")
@@ -150,8 +153,10 @@ eigval_error = eigval_error_abs / inertial_norm
 
 principal_transform = np.linalg.inv(P) @ global_I @ P @ np.linalg.inv(global_I)
 rotation = scipy.spatial.transform.Rotation.from_matrix(principal_transform)
-rotation_euler = rotation.as_euler('zyx') # [rad]
-total_rotation = np.linalg.norm(rotation_euler)
+rotation_euler = rotation.as_euler('zyx')  # [rad]
+#total_rotation = np.linalg.norm(rotation_euler)
+rotation_rvec = rotation.as_rotvec()
+total_rotation = np.linalg.norm(rotation_rvec)
 
 print(f"Absolute inertial error:   {eigval_error_abs:0.2e} kgm²")
 print(f"Inertial norm:             {inertial_norm:0.2e} kgm²")
