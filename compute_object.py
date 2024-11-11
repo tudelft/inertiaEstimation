@@ -116,21 +116,7 @@ def optim(optimisation_variables):
     print(f"* Error:    {error:6.15e}")
     print(f"* Flywheel inertia: {optimisation_variables[1]:6.15e}")
 
-    lambdas, eigenvectors = np.linalg.eigh(I)
-    principal_axis_order = np.diag(I).argsort()
-    P = eigenvectors[:, principal_axis_order]
-    lambdas = lambdas[principal_axis_order]
-    eigval_error = np.linalg.norm(np.array(lambdas) - np.diag(I_true)) / np.linalg.norm(np.diag(I_true))
-
-    principal_transform = np.linalg.inv(P) @ I @ P @ np.linalg.inv(I)
-    rotation = scipy.spatial.transform.Rotation.from_matrix(principal_transform)
-    #rotation_euler = rotation.as_euler('zyx')  # [rad]
-    #total_rotation = np.linalg.norm(rotation_euler)
-    rotation_rvec = rotation.as_rotvec()
-    total_rotation = np.linalg.norm(rotation_rvec)
-
-    print(f"Inertial error:   {eigval_error * 100:0.2f}%")
-    print(f"Alignment error:  {total_rotation * 180 / math.pi:0.2f}°")
+    computeError(I, I_true)
 
     return error
 print("========/[ Optimisation ]\========")
@@ -139,29 +125,8 @@ x = scipy.optimize.minimize(optim, [100, 8.46746037e-08], tol=1e-16, method="Nel
 print(x)
 print(x.x)
 
-# print(optim([8.467e-08]))
+#print(optim([100, 8.467e-08]))
 
 print("========\[ Optimisation ]/========\n")
 
-lambdas, eigenvectors = np.linalg.eigh(global_I)
-principal_axis_order = np.diag(global_I).argsort()
-P = eigenvectors[:, principal_axis_order]
-lambdas = lambdas[principal_axis_order]
-eigval_error_abs = np.linalg.norm(np.array(lambdas) - np.diag(global_I_true))
-inertial_norm = np.linalg.norm(np.diag(global_I_true))
-eigval_error = eigval_error_abs / inertial_norm
-
-principal_transform = np.linalg.inv(P) @ global_I @ P @ np.linalg.inv(global_I)
-rotation = scipy.spatial.transform.Rotation.from_matrix(principal_transform)
-rotation_euler = rotation.as_euler('zyx')  # [rad]
-#total_rotation = np.linalg.norm(rotation_euler)
-rotation_rvec = rotation.as_rotvec()
-total_rotation = np.linalg.norm(rotation_rvec)
-
-print(f"Absolute inertial error:   {eigval_error_abs:0.2e} kgm²")
-print(f"Inertial norm:             {inertial_norm:0.2e} kgm²")
-print(f"Inertial error:            {eigval_error * 100:0.2f}%")
-print(f"Alignment error:           {total_rotation * 180 / math.pi:0.2f}°")
-print(f"  Error around z:          {rotation_euler[0] * 180/math.pi:0.2f}°")
-print(f"  Error around y:          {rotation_euler[1] * 180/math.pi:0.2f}°")
-print(f"  Error around x:          {rotation_euler[2] * 180/math.pi:0.2f}°")
+computeError(global_I, global_I_true)
