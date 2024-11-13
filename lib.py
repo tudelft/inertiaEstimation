@@ -229,6 +229,37 @@ def computeX(angular_velocities, angular_accelerations, linear_accelerations):
     x, res, rank, s = np.linalg.lstsq(a, b, rcond=None)
     return x
 
+def computeError(I, I_true):
+    # singular value decomposition gives guarantees on right-handedness of rotation matrix, i think
+    R, lambdas, _ = np.linalg.svd(I)
+    R_true, lambdas_true, _ = np.linalg.svd(I_true)
+
+    # sort ascending, so x is smallest, z is largest
+    lambdas[:]      = lambdas[[2,1,0]]
+    lambdas_true[:] = lambdas_true[[2,1,0]]
+    R[:, :]         = R[:, [2,1,0]]
+    R_true[:, :]    = R_true[:, [2,1,0]]
+
+    eigval_error_abs = np.linalg.norm(lambdas - lambdas_true)
+    inertial_norm = np.linalg.norm(lambdas_true)
+    eigval_error = eigval_error_abs / inertial_norm
+
+    rotation = scipy.spatial.transform.Rotation.from_matrix(R)
+    R_error = np.linalg.inv(R_true) @ R
+    psi = np.arccos((np.linalg.trace(R_error) - 1.) / 2.)
+
+    rotation_euler = rotation.as_euler('zyx')  # [rad]
+
+    print(f"Absolute inertial error:   {eigval_error_abs:0.2e} kgm²")
+    print(f"Inertial norm:             {inertial_norm:0.2e} kgm²")
+    print(f"Inertial error:            {eigval_error * 100:0.2f}%")
+    print(f"Alignment error:           {psi * 180 / math.pi:0.2f}°")
+    print(f"  Euler around z:          {rotation_euler[0] * 180/math.pi:0.2f}°")
+    print(f"  Euler around y:          {rotation_euler[1] * 180/math.pi:0.2f}°")
+    print(f"  Euler around x:          {rotation_euler[2] * 180/math.pi:0.2f}°")
+
+    return eigval_error, psi
+
 def kroneckerDelta(i, j):
     return int(i == j)
 
