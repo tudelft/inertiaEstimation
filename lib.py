@@ -396,8 +396,7 @@ def calcGridObject(grid=np.zeros((4, 8), dtype=bool)):
 
     # base
     mb = 178.5e-3
-    db = np.array([74e-3, 145e-3, 42e-3], dtype=float)
-    cgb = np.array([0., 0., -18e-3])  # guess
+    cgb = np.array([0., 0., -18.9e-3])  # cad
     Mb = cgb * mb
 
     m += mb
@@ -423,7 +422,11 @@ def calcGridObject(grid=np.zeros((4, 8), dtype=bool)):
 
     # total inertia
     I = np.zeros((3,3), dtype=float)
-    Ib = getIOfCuboid(db, mb)
+
+    # from cad
+    Ib_cad = np.diag([2.994e10, 1.004e10, 3.506e10]) * 1e-9 * 1e-2  # cad was using 10mm per mm somehow
+    m_cad = 145.2 # kg...
+    Ib = mb / m_cad * Ib_cad
     Ib += parallelAxisTheorem(mb, cgb - cg)
 
     I += Ib
