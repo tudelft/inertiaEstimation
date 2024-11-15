@@ -380,3 +380,70 @@ def simulateThrow(inertiaTensor, times, omega_0, flywheel_omegas, flywheel_omega
         omegas.append(omega)
     omegas = np.array(omegas)
     return omegas
+
+
+def calcGridObject(grid=np.zeros((4, 8), dtype=bool)):
+    # coordinate system for CoG and Inertia is
+    #
+    # fixed at the center of the bottom surface of the grid
+    # xy plane is the bottom surface, x axis to the shorter side, y axis to the longest side
+    # z down
+
+    #%% center of mass
+
+    M = np.zeros(3, dtype=float)
+    m = 0.
+
+    # base
+    mb = 178.5e-3
+    cgb = np.array([0., 0., -18.9e-3])  # cad
+    Mb = cgb * mb
+
+    m += mb
+    M += Mb
+
+    # blocks
+    mbl = 70.1e-3
+    dbl = np.array([15e-3, 15e-3, 40e-3], dtype=float)
+    cg_bl = lambda i, j: 1e-3 * np.array([9 + (i-2)*18, 9 + (j-4)*18, -22], dtype=float)
+    for i, row in enumerate(grid):
+        for j, element in enumerate(row):
+            if not element:
+                continue
+            m += mbl
+            M += cg_bl(i, j) * mbl
+
+    cg = M / m
+
+    #%% inertia
+    def getIOfCuboid(dim, mass):
+        return 1/12 * mass \
+            * np.diag([dim[1]**2 + dim[2]**2, dim[0]**2 + dim[2]**2, dim[0]**2 + dim[1]**2])
+
+    # total inertia
+    I = np.zeros((3,3), dtype=float)
+
+    # from cad
+    Ib_cad = np.diag([2.994e10, 1.004e10, 3.506e10]) * 1e-9 * 1e-2  # cad was using 10mm per mm somehow
+    m_cad = 145.2 # kg...
+    Ib = mb / m_cad * Ib_cad
+    Ib += parallelAxisTheorem(mb, cgb - cg)
+
+    I += Ib
+
+    Ibl = getIOfCuboid(dbl, mbl)
+    for i, row in enumerate(grid):
+        for j, element in enumerate(row):
+            if not element:
+                continue
+            I += Ibl + parallelAxisTheorem(mbl, cg_bl(i, j) - cg)
+
+    return m, M / m, I
+
+
+if __name__=="__main__":
+    grid = np.zeros((4, 8), dtype=bool)
+    grid[0, 0] = grid[0, 7] = grid[3, 0] = grid[3, 7] = True
+
+    print(grid)
+    print(calcGridObject(grid))
