@@ -8,6 +8,8 @@ import os
 LOGFILE_PATH = "input/block_experiment"
 dirlist = ["device", "test"]
 
+sys.path.append(LOGFILE_PATH)
+
 global_I = None
 global_I_true = None
 
@@ -30,7 +32,7 @@ def optim(optimisation_variables):
                     = importDatafile(os.path.join(dirpath, f))
 
                 # Prepare discrete filter coefficients
-                filter_cutoff = optimisation_variables[0]  # [Hz]
+                filter_cutoff = 85  # [Hz]
                 dt = (times[-1] - times[0]) / len(times)
                 lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
 
@@ -61,7 +63,7 @@ def optim(optimisation_variables):
                     print("No throws detected")
                     continue
                 # lib.Jflywheel = 8.430e-08  # kg*m^2
-                lib.Jflywheel = optimisation_variables[1]
+                lib.Jflywheel = optimisation_variables[0]
 
                 throw_offset = 400
 
@@ -92,40 +94,32 @@ def optim(optimisation_variables):
     I_dev = Is[0]
     I_test = Is[1]
 
-    I = translateI(I_test, I_dev, m_obj, m_dev, x_dev, x_test)
+    import groundtruth
+
+    print(I_test)
+    I = -translateI(I_test, I_dev, groundtruth.m_obj, groundtruth.m_dev, x_dev, x_test)
     global global_I
     global_I = I
 
     np.set_printoptions(formatter={'float': lambda x: format(x, '6.8e')})
 
-    Ixx = 1/12 * m_obj * (0.0302 ** 2 + 0.0700 ** 2)
-    Iyy = 1/12 * m_obj * (0.0302 ** 2 + 0.0600 ** 2)
-    Izz = 1/12 * m_obj * (0.0600 ** 2 + 0.0700 ** 2)
     global global_I_true
-    I_true = np.matrix([[ Ixx, 0, 0 ],
-                        [ 0, Iyy, 0 ],
-                        [ 0, 0, Izz ]])
-    global_I_true = I_true
+    global_I_true = groundtruth.trueInertia
 
-    # print(I - I_true)
-    # print(I)
-    # print(I_true)
     error = np.linalg.norm(buildVector(I) - buildVector(I_true)) / np.linalg.norm(I_true)
-    # error = ((I - I_true)**2).mean() / ((I + I_true)**2).mean()
-    # error = ((I - I_true) @ np.linalg.inv(I + I_true)).sum()
     print(f"* Error:    {error:6.15e}")
-    print(f"* Flywheel inertia: {optimisation_variables[1]:6.15e}")
+    # print(f"* Flywheel inertia: {optimisation_variables[0]:6.15e}")
 
     computeError(I, I_true)
 
     return error
 print("========/[ Optimisation ]\========")
-x = scipy.optimize.minimize(optim, [100, 8.46746037e-08], tol=1e-16, method="Nelder-Mead")
+# x = scipy.optimize.minimize(optim, [100, 8.46746037e-08], tol=1e-16, method="Nelder-Mead")
 # x = scipy.optimize.minimize(optim, [0.173, 2701 * 0.070 * 0.060 * 0.030], tol=1e-16)
-print(x)
-print(x.x)
+# print(x)
+# print(x.x)
 
-#print(optim([100, 8.467e-08]))
+print(optim([8.46746037e-08]))
 
 print("========\[ Optimisation ]/========\n")
 

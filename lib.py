@@ -246,7 +246,7 @@ def computeError(I, I_true):
 
     rotation = scipy.spatial.transform.Rotation.from_matrix(R)
     R_error = np.linalg.inv(R_true) @ R
-    psi = np.arccos((np.linalg.trace(R_error) - 1.) / 2.)
+    psi = np.arccos((np.trace(R_error) - 1.) / 2.)
 
     rotation_euler = rotation.as_euler('zyx')  # [rad]
 
@@ -392,14 +392,14 @@ def calcGridObject(grid=np.zeros((4, 8), dtype=bool)):
     #%% center of mass
 
     M = np.zeros(3, dtype=float)
-    m = 0.
+    _m = 0.
 
     # base
     mb = 178.5e-3
     cgb = np.array([0., 0., -18.9e-3])  # cad
     Mb = cgb * mb
 
-    m += mb
+    _m += mb
     M += Mb
 
     # blocks
@@ -410,10 +410,10 @@ def calcGridObject(grid=np.zeros((4, 8), dtype=bool)):
         for j, element in enumerate(row):
             if not element:
                 continue
-            m += mbl
+            _m += mbl
             M += cg_bl(i, j) * mbl
 
-    cg = M / m
+    cg = M / _m
 
     #%% inertia
     def getIOfCuboid(dim, mass):
@@ -421,7 +421,7 @@ def calcGridObject(grid=np.zeros((4, 8), dtype=bool)):
             * np.diag([dim[1]**2 + dim[2]**2, dim[0]**2 + dim[2]**2, dim[0]**2 + dim[1]**2])
 
     # total inertia
-    I = np.zeros((3,3), dtype=float)
+    _I = np.zeros((3,3), dtype=float)
 
     # from cad
     Ib_cad = np.diag([2.994e10, 1.004e10, 3.506e10]) * 1e-9 * 1e-2  # cad was using 10mm per mm somehow
@@ -429,16 +429,16 @@ def calcGridObject(grid=np.zeros((4, 8), dtype=bool)):
     Ib = mb / m_cad * Ib_cad
     Ib += parallelAxisTheorem(mb, cgb - cg)
 
-    I += Ib
+    _I += Ib
 
     Ibl = getIOfCuboid(dbl, mbl)
     for i, row in enumerate(grid):
         for j, element in enumerate(row):
             if not element:
                 continue
-            I += Ibl + parallelAxisTheorem(mbl, cg_bl(i, j) - cg)
+            _I += Ibl + parallelAxisTheorem(mbl, cg_bl(i, j) - cg)
 
-    return m, M / m, I
+    return _m, M / _m, _I
 
 
 if __name__=="__main__":
