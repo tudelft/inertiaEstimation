@@ -1,3 +1,4 @@
+from input.block_experiment.groundtruth import trueInertia
 from lib import *
 import lib
 
@@ -86,5 +87,19 @@ right_side_matrix = Is[1] - Is[0]
 left_side_vector = buildVector(left_side_matrix)
 right_side_vector = buildVector(right_side_matrix)
 j = np.dot(right_side_vector, left_side_vector) / np.linalg.norm(right_side_vector) ** 2
+e = j * right_side_vector - left_side_vector
 
-print(j)
+print(f"\nOrthogonal projection flywheel inertia:  {j:.4e} kgm^2")
+print(f"OPF inertial error:                      {np.linalg.norm(e):.4e} kgm^2")
+
+print("\n== ERROR MATRIX ==")
+print(buildTensor(e))
+print("\n== GROUND TRUTH MATRIX ==")
+print(trueInertia)
+
+print("\n== RELATIVE ERROR PERCENTAGES ==")
+# Calibration error wrt true assumed inertia
+with np.errstate(divide='ignore'):
+    print(f"OPF relative error:                     \n{100 * buildTensor(e / buildVector(trueInertia))} %")
+print("\n== ESTIMATE INERTIAL AND ALIGNMENT ERROR ==")
+computeError(trueInertia + buildTensor(e), trueInertia)
