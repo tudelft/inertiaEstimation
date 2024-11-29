@@ -1,37 +1,43 @@
+from input.new_motor.calibration import calibration_groundtruth
 from lib import *
+import calibrate
 import lib
+import os
 
-LOGFILES_ROOT = "input"
-LOGFILE_PATH = "block_experiment"
-dirlist = ["device", "test"]
+LOGFILE_PATH = "input/new_motor"
+dirlist = ["device", "test/grid_empty"]
 
-def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device", "test"], GROUNDTRUTH_PATH="", filter_cutoff=85):
-    print("==== CALIBRATING FLYWHEEL INERTIA ====")
+sys.path.append(LOGFILE_PATH)
 
-    # if GROUNDTRUTH_PATH:
-    #     sys.path.append(os.path.join(LOGFILES_ROOT, GROUNDTRUTH_PATH))
-    # else:
-    sys.path.append(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, GROUNDTRUTH_PATH))
+global_I = None
+global_I_true = None
+
+filter_cutoff = 10
+
+def iter(iteration_params):
+    j = calibrate.calibrateFlywheel("new_motor", dirlist=["device", "calibration"], GROUNDTRUTH_PATH="calibration", filter_cutoff=iteration_params[0])
 
     Is = []
     xs = []
+
     for dir in dirlist:
         l_filtered_omegas = []
         l_omega_dots = []
         l_filtered_flywheel_omegas = []
         l_flywheel_omega_dots = []
         l_filtered_accelerations = []
-        print(os.path.join(LOGFILE_PATH, dir))
-        for (dirpath, dirnames, files) in os.walk(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, dir)):
+        for (dirpath, dirnames, files) in os.walk(os.path.join(LOGFILE_PATH, dir)):
             for f in files:
                 if ".py" in f:
                     continue
+                print(f"== [ {f} ] ==")
+
                 df, omegas, accelerations, times, flywheel_omegas \
-                    = importDatafile(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, dir, f))
+                    = importDatafile(os.path.join(dirpath, f))
 
                 # Prepare discrete filter coefficients
                 dt = (times[-1] - times[0]) / len(times)
-                lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
+                lib.filter_coefs = recomputeFilterCoefficients(iteration_params[0], dt)
 
                 # Apply filter to data
                 filtered_omegas = filterVectorSignal(omegas)
@@ -56,11 +62,10 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
 
                 starts, ends = detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks, flywheel_omegas)
 
-                # Set flywheel inertia
-                lib.Jflywheel = 1
-
                 if len(starts) == 0:
+                    print("No throws detected")
                     continue
+                lib.Jflywheel = j
 
                 throw_offset = 400
 
@@ -69,6 +74,7 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
                 l_filtered_flywheel_omegas.extend(filtered_flywheel_omegas[starts[0] + throw_offset:])
                 l_flywheel_omega_dots.extend(flywheel_omega_dots[starts[0] + throw_offset:])
                 l_filtered_accelerations.extend(filtered_accelerations[starts[0] + throw_offset:])
+
             # Compute inertia tensor with filtered data
             I = computeI(l_filtered_omegas,
                          l_omega_dots,
@@ -81,39 +87,21 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
             xs.append(x)
             break
 
-    try:
-        import calibration_groundtruth
-    except ImportError:
-        import groundtruth as calibration_groundtruth
+    x_dev = xs[0]
+    x_test = xs[1]
+    I_dev = Is[0]
+    I_test = Is[1]
 
-    r = (calibration_groundtruth.m_dev / calibration_groundtruth.m_obj) * (xs[0] - xs[1])
-    s = xs[0] - xs[1]
+    sys.path.append(os.path.join(LOGFILE_PATH, dirlist[1]))
+    import groundtruth
 
-    left_side_matrix = calibration_groundtruth.trueInertia + parallelAxisTheorem(calibration_groundtruth.m_obj, r) + parallelAxisTheorem(calibration_groundtruth.m_dev, s)
-    right_side_matrix = Is[1] - Is[0]
+    print(I_test)
+    I = translateI(I_test, I_dev, groundtruth.m_obj, groundtruth.m_dev, x_dev, x_test)
 
-    left_side_vector = buildVector(left_side_matrix)
-    right_side_vector = buildVector(right_side_matrix)
-    j = np.dot(right_side_vector, left_side_vector) / np.linalg.norm(right_side_vector) ** 2
-    e = j * right_side_vector - left_side_vector
+    np.set_printoptions(formatter={'float': lambda x: format(x, '.8e')})
+    i, psi = computeError(I, groundtruth.trueInertia)
+    return i
 
-    print(f"\nOrthogonal projection flywheel inertia:  {j:.4e} kgm^2")
-    print(f"OPF inertial error:                      {np.linalg.norm(e):.4e} kgm^2")
-
-    print("\n== ERROR MATRIX ==")
-    print(buildTensor(e))
-    print("\n== GROUND TRUTH MATRIX ==")
-    print(calibration_groundtruth.trueInertia)
-
-    print("\n== RELATIVE ERROR PERCENTAGES ==")
-    # Calibration error wrt true assumed inertia
-    with np.errstate(divide='ignore'):
-        print(f"{100 * buildTensor(e / buildVector(calibration_groundtruth.trueInertia))} %")
-    print("\n== ESTIMATE INERTIAL AND ALIGNMENT ERROR ==")
-    computeError(calibration_groundtruth.trueInertia + buildTensor(e), calibration_groundtruth.trueInertia)
-
-    del calibration_groundtruth
-    sys.path.remove(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, GROUNDTRUTH_PATH))
-    return j
-
-# calibrateFlywheel(LOGFILE_PATH)
+optim = scipy.optimize.minimize(iter, x0=[10], bounds=[(0.0001, None)], method="L-BFGS-B")
+print(optim)
+print(optim.x[0])

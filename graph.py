@@ -6,10 +6,8 @@ import os
 import pathlib
 import calibrate
 
-LOGFILE_PATH = "new_motor/test/grid_a"
+LOGFILE_PATH = "new_motor/calibration"
 LOGFILES_ROOT = "input"
-
-j = calibrate.calibrateFlywheel("new_motor", dirlist=["device", "calibration"], GROUNDTRUTH_PATH="calibration")
 
 for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFILE_PATH)):
     for f in filenames:
@@ -20,7 +18,7 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
             = importDatafile(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, f))
 
         # Prepare discrete filter coefficients
-        filter_cutoff = 40
+        filter_cutoff = 7
         dt = (times[-1] - times[0])/len(times)
         lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
 
@@ -68,27 +66,7 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
              # plt.show()
              # sys.exit()
 
-        # Set flywheel inertia
-        lib.Jflywheel = j # kg*m^2
-
         throw_offset = +400
-
-        # Compute inertia tensor with filtered data
-        I = computeI(filtered_omegas[starts[0]+throw_offset:],
-                     omega_dots[starts[0]+throw_offset:],
-                     filtered_flywheel_omegas[starts[0]+throw_offset:],
-                     flywheel_omega_dots[starts[0]+throw_offset:])
-        x = computeX(filtered_omegas[starts[0]+throw_offset:],
-                     omega_dots[starts[0]+throw_offset:],
-                     filtered_accelerations[starts[0]+throw_offset:])
-        print(I)
-
-        simulation_omegas = simulateThrow(I,
-                                          times[starts[0]+throw_offset:],
-                                          filtered_omegas[starts[0]+throw_offset],
-                                          filtered_flywheel_omegas[starts[0]+throw_offset:],
-                                          flywheel_omega_dots[starts[0]+throw_offset:])
-        timePlotVector(times[starts[0]+throw_offset+1:], simulation_omegas, label="Simulated", ax=ax1, linestyle="dashed", alpha=0.8)
 
         ax2.get_legend().remove()
 
@@ -103,7 +81,7 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         ax2.grid()
 
         fig.set_size_inches(10, 2.5)
-        filename = os.path.splitext(os.path.join("output", LOGFILE_PATH, f))[0] + "-simulation.pdf"
+        filename = os.path.splitext(os.path.join("output", LOGFILE_PATH, f))[0] + ".pdf"
         pathlib.Path(os.path.dirname(filename)).mkdir(parents=True, exist_ok=True)
         plt.savefig(filename, transparent=True, dpi=300, format="pdf", bbox_inches="tight")
 

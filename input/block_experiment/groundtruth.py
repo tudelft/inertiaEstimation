@@ -1,5 +1,7 @@
 import numpy as np
 
+# CONFIGURATION 01: light flywheel
+
 m_dev = 0.073  # [kg]
 m_obj = 0.346  # [kg]
 
