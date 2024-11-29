@@ -4,8 +4,8 @@ import calibrate
 import lib
 import os
 
-LOGFILE_PATH = "input/new_motor"
-dirlist = ["device", "test/grid_empty"]
+LOGFILE_PATH = "input/cyberzoo_tests"
+dirlist = ["device", "config_a"]
 
 sys.path.append(LOGFILE_PATH)
 
@@ -15,7 +15,7 @@ global_I_true = None
 filter_cutoff = 10
 
 def iter(iteration_params):
-    j = calibrate.calibrateFlywheel("new_motor", dirlist=["device", "calibration"], GROUNDTRUTH_PATH="calibration", filter_cutoff=iteration_params[0])
+    j = calibrate.calibrateFlywheel("cyberzoo_tests", dirlist=["device", "calibration_copy"], GROUNDTRUTH_PATH="calibration_copy", filter_cutoff=20)
 
     Is = []
     xs = []
@@ -67,7 +67,7 @@ def iter(iteration_params):
                     continue
                 lib.Jflywheel = j
 
-                throw_offset = 400
+                throw_offset = 100
 
                 l_filtered_omegas.extend(filtered_omegas[starts[0] + throw_offset:])
                 l_omega_dots.extend(omega_dots[starts[0] + throw_offset:])
@@ -102,6 +102,6 @@ def iter(iteration_params):
     i, psi = computeError(I, groundtruth.trueInertia)
     return i
 
-optim = scipy.optimize.minimize(iter, x0=[10], bounds=[(0.0001, None)], method="L-BFGS-B")
+optim = scipy.optimize.minimize(iter, x0=[10], bounds=[(0., None)], method="L-BFGS-B")
 print(optim)
 print(optim.x[0])

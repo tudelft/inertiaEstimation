@@ -6,7 +6,8 @@ import os
 import pathlib
 import calibrate
 
-LOGFILE_PATH = "new_motor/calibration"
+# LOGFILE_PATH = "new_motor/test/grid_empty"
+LOGFILE_PATH = "cyberzoo_tests/device"
 LOGFILES_ROOT = "input"
 
 for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFILE_PATH)):
@@ -18,7 +19,7 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
             = importDatafile(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, f))
 
         # Prepare discrete filter coefficients
-        filter_cutoff = 7
+        filter_cutoff = 150
         dt = (times[-1] - times[0])/len(times)
         lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
 
@@ -75,6 +76,13 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         for e in ends:
             ax1.axvline([times[e + throw_offset] * 1e3], linestyle="dotted", color="darkgray")
 
+        xrange = max(filtered_omegas[starts[0] + throw_offset:].T[0]) - min(filtered_omegas[starts[0] + throw_offset:].T[0])
+        yrange = max(filtered_omegas[starts[0] + throw_offset:].T[1]) - min(filtered_omegas[starts[0] + throw_offset:].T[1])
+        zrange = max(filtered_omegas[starts[0] + throw_offset:].T[2]) - min(filtered_omegas[starts[0] + throw_offset:].T[2])
+        print("X range = ", xrange)
+        print("Y range = ", yrange)
+        print("Z range = ", zrange)
+
         ax1.set_xlim([times[starts[0]] * 1e3, times[-1] * 1e3])
 
         ax1.grid()
@@ -87,5 +95,5 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
 
         # formatTicks(100, 20)
         plt.tight_layout()
-        plt.show()
+        # plt.show()
     break

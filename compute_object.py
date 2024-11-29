@@ -1,20 +1,18 @@
-from input.new_motor.calibration import calibration_groundtruth
 from lib import *
 import calibrate
 import lib
 import os
 
-LOGFILE_PATH = "input/new_motor"
-dirlist = ["device", "test/grid_empty"]
+LOGFILE_PATH = "input/cyberzoo_tests"
+dirlist = ["device", "config_a"]
 
 sys.path.append(LOGFILE_PATH)
 
 global_I = None
 global_I_true = None
 
-filter_cutoff = 7 # Hz
-
-j = calibrate.calibrateFlywheel("new_motor", dirlist=["device", "calibration"], GROUNDTRUTH_PATH="calibration", filter_cutoff=filter_cutoff)
+filter_cutoff = 200
+j = calibrate.calibrateFlywheel("cyberzoo_tests", dirlist=["device", "calibration_copy"], GROUNDTRUTH_PATH="calibration_copy", filter_cutoff=200)
 
 Is = []
 xs = []
