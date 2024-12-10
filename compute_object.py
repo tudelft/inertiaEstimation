@@ -11,8 +11,12 @@ sys.path.append(LOGFILE_PATH)
 global_I = None
 global_I_true = None
 
-filter_cutoff = 200
-j = calibrate.calibrateFlywheel("cyberzoo_tests", dirlist=["device", "calibration_copy"], GROUNDTRUTH_PATH="calibration_copy", filter_cutoff=200)
+filter_cutoff = 10
+j = calibrate.calibrateFlywheel("cyberzoo_tests",
+                                dirlist=["device", "calibration_copy"],
+                                GROUNDTRUTH_PATH="calibration_copy",
+                                filter_cutoff=filter_cutoff,
+                                newMotor=True)
 
 Is = []
 xs = []
@@ -30,7 +34,7 @@ for dir in dirlist:
             print(f"== [ {f} ] ==")
 
             df, omegas, accelerations, times, flywheel_omegas \
-                = importDatafile(os.path.join(dirpath, f))
+                = importDatafile(os.path.join(dirpath, f), newMotor=True)
 
             # Prepare discrete filter coefficients
             dt = (times[-1] - times[0]) / len(times)

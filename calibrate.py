@@ -5,7 +5,7 @@ LOGFILES_ROOT = "input"
 LOGFILE_PATH = "block_experiment"
 dirlist = ["device", "test"]
 
-def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device", "test"], GROUNDTRUTH_PATH="", filter_cutoff=85):
+def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device", "test"], GROUNDTRUTH_PATH="", filter_cutoff=85, newMotor=False):
     print("==== CALIBRATING FLYWHEEL INERTIA ====")
 
     # if GROUNDTRUTH_PATH:
@@ -27,7 +27,8 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
                 if ".py" in f:
                     continue
                 df, omegas, accelerations, times, flywheel_omegas \
-                    = importDatafile(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, dir, f))
+                    = importDatafile(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, dir, f),
+                                     newMotor=newMotor)
 
                 # Prepare discrete filter coefficients
                 dt = (times[-1] - times[0]) / len(times)
