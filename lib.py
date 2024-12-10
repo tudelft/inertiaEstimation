@@ -10,7 +10,7 @@ import os
 
 SUPPORTED_IMPORTERS = ["csv", "bfl"]
 
-def importDatafile(path, importer=None, newMotor=False):
+def importDatafile(path, importer=None, new_motor=False):
     # importer can be "csv" or "bfl" of None. 
     # if importer=None, then it goes by file extension
 
@@ -40,7 +40,7 @@ def importDatafile(path, importer=None, newMotor=False):
     # Linear acceleration in m/s/s
     araw = df[[f"accSmooth[{i}]" for i in range(3)]].to_numpy() * 9.81 / 2048
 
-    if newMotor:
+    if new_motor:
         # because of cables with new bigger motor, FC rotated -90deg around z
         df["gyroADC[0]"] = -wraw[:, 1]
         df["gyroADC[1]"] = +wraw[:, 0]
@@ -60,7 +60,7 @@ def importDatafile(path, importer=None, newMotor=False):
     df["time"] = (df["time"] - df["time"].min()) / 1e6
 
     # Flywheel angular velocity in rad/s
-    poles = 14 if newMotor else 12
+    poles = 14 if new_motor else 12
     df["omegaFlywheel"] = df["erpm[0]"].values * 100 / (poles / 2) * 2 * math.pi / 60
     flywheelOmega = np.array([np.zeros(len(df)), np.zeros(len(df)), -df["omegaFlywheel"].values]).T
 
