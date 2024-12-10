@@ -243,7 +243,7 @@ def computeX(angular_velocities, angular_accelerations, linear_accelerations):
     return x
 
 def computeError(I, I_true):
-    # singular value decomposition gives guarantees on right-handedness of rotation matrix, i think
+    # singular value decomposition gives guarantees on right-handedness of rotation matrix, i think. oops, it's not...
     R, lambdas, _ = np.linalg.svd(I)
     R_true, lambdas_true, _ = np.linalg.svd(I_true)
 
@@ -252,6 +252,9 @@ def computeError(I, I_true):
     lambdas_true[:] = lambdas_true[[2,1,0]]
     R[:, :]         = R[:, [2,1,0]]
     R_true[:, :]    = R_true[:, [2,1,0]]
+
+    R /= np.linalg.det(R)
+    R_true /= np.linalg.det(R_true)
 
     eigval_error_abs = np.linalg.norm(lambdas - lambdas_true)
     inertial_norm = np.linalg.norm(lambdas_true)
