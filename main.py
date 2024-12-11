@@ -9,7 +9,10 @@ import calibrate
 LOGFILE_PATH = "new_motor/test/grid_a"
 LOGFILES_ROOT = "input"
 
-j = calibrate.calibrateFlywheel("new_motor", dirlist=["device", "calibration"], GROUNDTRUTH_PATH="calibration")
+j, _, __ = calibrate.calibrateFlywheel("cyberzoo_tests",
+                                dirlist=["device", "calibration_copy"],
+                                GROUNDTRUTH_PATH="calibration_copy",
+                                new_motor=True)
 
 for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFILE_PATH)):
     for f in filenames:

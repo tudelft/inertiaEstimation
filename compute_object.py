@@ -13,7 +13,7 @@ global_I_true = None
 
 filter_cutoff = 10
 new_motor = True
-j = calibrate.calibrateFlywheel("cyberzoo_tests",
+j, _, __ = calibrate.calibrateFlywheel("cyberzoo_tests",
                                 dirlist=["device", "calibration_copy"],
                                 GROUNDTRUTH_PATH="calibration_copy",
                                 filter_cutoff=filter_cutoff,
