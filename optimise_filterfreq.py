@@ -15,7 +15,7 @@ global_I_true = None
 filter_cutoff = 10
 
 def iter(iteration_params):
-    j = calibrate.calibrateFlywheel("cyberzoo_tests", dirlist=["device", "calibration_copy"], GROUNDTRUTH_PATH="calibration_copy", filter_cutoff=20)
+    j, epsilon, phi = calibrate.calibrateFlywheel("cyberzoo_tests", dirlist=["device", "calibration_copy"], GROUNDTRUTH_PATH="calibration_copy", filter_cutoff=iteration_params[0])
 
     Is = []
     xs = []
@@ -100,7 +100,7 @@ def iter(iteration_params):
 
     np.set_printoptions(formatter={'float': lambda x: format(x, '.8e')})
     i, psi = computeError(I, groundtruth.trueInertia)
-    return i
+    return epsilon
 
 optim = scipy.optimize.minimize(iter, x0=[10], bounds=[(0., None)], method="L-BFGS-B")
 print(optim)
