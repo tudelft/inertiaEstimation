@@ -5,7 +5,11 @@ LOGFILES_ROOT = "input"
 LOGFILE_PATH = "block_experiment"
 dirlist = ["device", "test"]
 
-def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device", "test"], GROUNDTRUTH_PATH="", filter_cutoff=85, new_motor=False):
+# window_length = 250
+throw_offset = 300
+default_filter_cutoff = 15
+
+def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device", "test"], GROUNDTRUTH_PATH="", filter_cutoff=default_filter_cutoff, new_motor=False):
     print("==== CALIBRATING FLYWHEEL INERTIA ====")
 
     # if GROUNDTRUTH_PATH:
@@ -37,6 +41,8 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
                 # Apply filter to data
                 filtered_omegas = filterVectorSignal(omegas)
                 filtered_flywheel_omegas = filterVectorSignal(flywheel_omegas)
+
+                lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
                 filtered_accelerations = filterVectorSignal(accelerations)
 
                 # Numerically differentiate filtered signals
@@ -63,7 +69,6 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
                 if len(starts) == 0:
                     continue
 
-                throw_offset = 400
 
                 l_filtered_omegas.extend(filtered_omegas[starts[0] + throw_offset:])
                 l_omega_dots.extend(omega_dots[starts[0] + throw_offset:])
@@ -117,4 +122,8 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
     sys.path.remove(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, GROUNDTRUTH_PATH))
     return j, epsilon, psi
 
-# calibrateFlywheel(LOGFILE_PATH)
+if __name__=="__main__":
+    calibrateFlywheel("cyberzoo_tests",
+                                dirlist=["device", "calibration_copy"],
+                                GROUNDTRUTH_PATH="calibration_copy",
+                                new_motor=True)
