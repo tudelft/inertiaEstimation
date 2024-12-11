@@ -6,8 +6,9 @@ import os
 import pathlib
 import calibrate
 
-LOGFILE_PATH = "new_motor/test/grid_a"
+LOGFILE_PATH = "cyberzoo_tests/config_a"
 LOGFILES_ROOT = "input"
+SAVE_FOR_PUBLICATION = False
 
 j, _, __ = calibrate.calibrateFlywheel("cyberzoo_tests",
                                 dirlist=["device", "calibration_copy"],
@@ -40,7 +41,6 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
 
         filtered_omegas = delaySavGolFilterVectorSignal(filtered_omegas)
         filtered_flywheel_omegas = delaySavGolFilterVectorSignal(filtered_flywheel_omegas)
-        filtered_accelerations = delaySavGolFilterVectorSignal(filtered_omegas)
 
         # Find lengths of filtered values
         absolute_accelerations = np.sqrt(accelerations[:,0] ** 2 +
@@ -105,12 +105,16 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         ax1.grid()
         ax2.grid()
 
-        fig.set_size_inches(10, 2.5)
         filename = os.path.splitext(os.path.join("output", LOGFILE_PATH, f))[0] + "-simulation.pdf"
         pathlib.Path(os.path.dirname(filename)).mkdir(parents=True, exist_ok=True)
-        plt.savefig(filename, transparent=True, dpi=300, format="pdf", bbox_inches="tight")
 
-        # formatTicks(100, 20)
-        plt.tight_layout()
-        plt.show()
+        plt.savefig(filename, transparent=True, dpi=300, format="pdf", bbox_inches="tight")
+        if SAVE_FOR_PUBLICATION:
+            filename = os.path.splitext(os.path.join("output", LOGFILE_PATH, f))[0] + "-simulation_publication.pdf"
+            fig.set_size_inches(10, 2.5)
+            plt.savefig(filename, transparent=True, dpi=300, format="pdf", bbox_inches="tight")
+        else:
+            # formatTicks(100, 20)
+            plt.tight_layout()
+            plt.show()
     break
