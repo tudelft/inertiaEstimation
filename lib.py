@@ -10,7 +10,7 @@ import os
 
 SUPPORTED_IMPORTERS = ["csv", "bfl"]
 
-def importDatafile(path, poles = 12, importer=None):
+def importDatafile(path, importer=None, new_motor=False):
     # importer can be "csv" or "bfl" of None. 
     # if importer=None, then it goes by file extension
 
@@ -35,19 +35,32 @@ def importDatafile(path, poles = 12, importer=None):
         df = log.raw.copy()
 
     # Angular velocities in rad/s
-    df["gyroADC[0]"] = -df["gyroADC[0]"] * math.pi / 180 / 16.384
-    df["gyroADC[1]"] = -df["gyroADC[1]"] * math.pi / 180 / 16.384
-    df["gyroADC[2]"] =  df["gyroADC[2]"] * math.pi / 180 / 16.384
+    wraw = df[[f"gyroADC[{i}]" for i in range(3)]].to_numpy() * math.pi / 180 / 16.384
 
     # Linear acceleration in m/s/s
-    df["accSmooth[0]"] = -df["accSmooth[0]"] * 9.81 / 2048
-    df["accSmooth[1]"] = -df["accSmooth[1]"] * 9.81 / 2048
-    df["accSmooth[2]"] =  df["accSmooth[2]"] * 9.81 / 2048
+    araw = df[[f"accSmooth[{i}]" for i in range(3)]].to_numpy() * 9.81 / 2048
+
+    if new_motor:
+        # because of cables with new bigger motor, FC rotated -90deg around z
+        df["gyroADC[0]"] = -wraw[:, 1]
+        df["gyroADC[1]"] = +wraw[:, 0]
+        df["gyroADC[2]"] = +wraw[:, 2]
+        df["accSmooth[0]"] = -araw[:, 1]
+        df["accSmooth[1]"] = +araw[:, 0]
+        df["accSmooth[2]"] = +araw[:, 2]
+    else:
+        df["gyroADC[0]"] = -wraw[:, 0]
+        df["gyroADC[1]"] = -wraw[:, 1]
+        df["gyroADC[2]"] = +wraw[:, 2]
+        df["accSmooth[0]"] = -araw[:, 0]
+        df["accSmooth[1]"] = -araw[:, 1]
+        df["accSmooth[2]"] = +araw[:, 2]
 
     # Time axis in s
     df["time"] = (df["time"] - df["time"].min()) / 1e6
 
     # Flywheel angular velocity in rad/s
+    poles = 14 if new_motor else 12
     df["omegaFlywheel"] = df["erpm[0]"].values * 100 / (poles / 2) * 2 * math.pi / 60
     flywheelOmega = np.array([np.zeros(len(df)), np.zeros(len(df)), -df["omegaFlywheel"].values]).T
 
@@ -230,7 +243,7 @@ def computeX(angular_velocities, angular_accelerations, linear_accelerations):
     return x
 
 def computeError(I, I_true):
-    # singular value decomposition gives guarantees on right-handedness of rotation matrix, i think
+    # singular value decomposition gives guarantees on right-handedness of rotation matrix, i think. oops, it's not...
     R, lambdas, _ = np.linalg.svd(I)
     R_true, lambdas_true, _ = np.linalg.svd(I_true)
 
@@ -240,23 +253,39 @@ def computeError(I, I_true):
     R[:, :]         = R[:, [2,1,0]]
     R_true[:, :]    = R_true[:, [2,1,0]]
 
+    R /= np.linalg.det(R)
+    R_true /= np.linalg.det(R_true)
+
     eigval_error_abs = np.linalg.norm(lambdas - lambdas_true)
     inertial_norm = np.linalg.norm(lambdas_true)
     eigval_error = eigval_error_abs / inertial_norm
 
-    rotation = scipy.spatial.transform.Rotation.from_matrix(R)
-    R_error = np.linalg.inv(R_true) @ R
-    psi = np.arccos((np.trace(R_error) - 1.) / 2.)
+    # run through equivalent rotations (180deg rotations around each vector)
+    max_error = +np.inf
+    for perm in [(1, 1, 1), (1, -1, -1), (-1, 1, -1), (-1, -1, 1)]:
+        R_try = R.copy()
+        R_try[:, 0] *= perm[0]
+        R_try[:, 1] *= perm[1]
+        R_try[:, 2] *= perm[2]
 
-    rotation_euler = rotation.as_euler('zyx')  # [rad]
+        R_error_try = np.linalg.inv(R_true) @ R_try
+        psi_try = np.arccos((np.trace(R_error_try) - 1.) / 2.)
+
+        if psi_try < max_error:
+            # log new best orientation
+            max_error = psi_try
+            psi = psi_try
+            R_error = R_error_try.copy()
+            rotation_error = scipy.spatial.transform.Rotation.from_matrix(R_error)
+            euler_error = rotation_error.as_euler('zyx')  # [rad]
 
     print(f"Absolute inertial error:   {eigval_error_abs:0.2e} kgm²")
     print(f"Inertial norm:             {inertial_norm:0.2e} kgm²")
     print(f"Inertial error:            {eigval_error * 100:0.2f}%")
     print(f"Alignment error:           {psi * 180 / math.pi:0.2f}°")
-    print(f"  Euler around z:          {rotation_euler[0] * 180/math.pi:0.2f}°")
-    print(f"  Euler around y:          {rotation_euler[1] * 180/math.pi:0.2f}°")
-    print(f"  Euler around x:          {rotation_euler[2] * 180/math.pi:0.2f}°")
+    print(f"  Euler around z:          {euler_error[0] * 180/math.pi:0.2f}°")
+    print(f"  Euler around y:          {euler_error[1] * 180/math.pi:0.2f}°")
+    print(f"  Euler around x:          {euler_error[2] * 180/math.pi:0.2f}°")
 
     return eigval_error, psi
 
