@@ -116,11 +116,10 @@ def timePlotVector(t, var, label="", ylabel="", minor=None, major=None, ax=plt, 
 global_filter_cutoff = 1000
 filter_coefs = None
 def filterSignal(signal, cutoff_freq=global_filter_cutoff):
-    return scipy.signal.lfilter(filter_coefs[0], filter_coefs[1], signal)
+    return scipy.signal.filtfilt(filter_coefs[0], filter_coefs[1], signal)
 
 def recomputeFilterCoefficients(filter_cutoff, dt):
-    # global filter_coefs
-    return scipy.signal.butter(4, filter_cutoff, output="ba", btype="lowpass", fs=1/dt)
+    return scipy.signal.butter(2, filter_cutoff, output="ba", btype="lowpass", fs=1/dt)
 
 def filterVectorSignal(signal, **kwargs):
     res = []
@@ -164,8 +163,10 @@ deriv_coefs = derivativeCoefficients(m, f).reshape(-1, 1)
 #     new_signal[-1] = new_signal[-2]
 #     return new_signal
 
-def differentiateSignal(signal, dt, window_length=86):
-    return scipy.signal.savgol_filter(signal, window_length=window_length, polyorder=1, delta=dt, deriv=1)
+WINDOW_LENGTH = 100
+def differentiateSignal(signal, dt):
+    return np.gradient(signal, dt)
+    # return scipy.signal.savgol_filter(signal, window_length=window_length, polyorder=1, delta=dt, deriv=1)
 
 def delaySavGolFilterVectorSignal(signal, *args, **kwargs):
     res = []
@@ -279,13 +280,13 @@ def computeError(I, I_true):
             rotation_error = scipy.spatial.transform.Rotation.from_matrix(R_error)
             euler_error = rotation_error.as_euler('zyx')  # [rad]
 
-    print(f"Absolute inertial error:   {eigval_error_abs:0.2e} kgm²")
-    print(f"Inertial norm:             {inertial_norm:0.2e} kgm²")
-    print(f"Inertial error:            {eigval_error * 100:0.2f}%")
-    print(f"Alignment error:           {psi * 180 / math.pi:0.2f}°")
-    print(f"  Euler around z:          {euler_error[0] * 180/math.pi:0.2f}°")
-    print(f"  Euler around y:          {euler_error[1] * 180/math.pi:0.2f}°")
-    print(f"  Euler around x:          {euler_error[2] * 180/math.pi:0.2f}°")
+    print(f"Alignment error:           {psi * 180 / math.pi: 0.2f}°")
+    print(f"  Euler around z:          {euler_error[0] * 180/math.pi: 0.2f}°")
+    print(f"  Euler around y:          {euler_error[1] * 180/math.pi: 0.2f}°")
+    print(f"  Euler around x:          {euler_error[2] * 180/math.pi: 0.2f}°")
+    print(f"Absolute inertial error:   {eigval_error_abs: 0.2e} kgm²")
+    print(f"Inertial norm:             {inertial_norm: 0.2e} kgm²")
+    print(f"Inertial error:            {eigval_error * 100: 0.2f}%")
 
     return eigval_error, psi
 
