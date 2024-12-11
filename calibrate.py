@@ -110,10 +110,10 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
     with np.errstate(divide='ignore'):
         print(f"{100 * buildTensor(e / buildVector(calibration_groundtruth.trueInertia))} %")
     print("\n== ESTIMATE INERTIAL AND ALIGNMENT ERROR ==")
-    computeError(calibration_groundtruth.trueInertia + buildTensor(e), calibration_groundtruth.trueInertia)
+    epsilon, psi = computeError(calibration_groundtruth.trueInertia + buildTensor(e), calibration_groundtruth.trueInertia)
 
     del calibration_groundtruth
     sys.path.remove(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, GROUNDTRUTH_PATH))
-    return j
+    return j, epsilon, psi
 
 # calibrateFlywheel(LOGFILE_PATH)
