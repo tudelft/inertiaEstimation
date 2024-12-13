@@ -2,12 +2,12 @@ from lib import *
 import lib
 
 LOGFILES_ROOT = "input"
-LOGFILE_PATH = "block_experiment"
+LOGFILE_PATH = "cyberzoo_test_the_second"
 dirlist = ["device", "test"]
 
 # window_length = 250
 throw_offset = 300
-default_filter_cutoff = 15
+default_filter_cutoff = 150
 
 def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device", "test"], GROUNDTRUTH_PATH="", filter_cutoff=default_filter_cutoff, new_motor=False):
     print("==== CALIBRATING FLYWHEEL INERTIA ====")
@@ -42,7 +42,7 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
                 filtered_omegas = filterVectorSignal(omegas)
                 filtered_flywheel_omegas = filterVectorSignal(flywheel_omegas)
 
-                lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
+                lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff / 3, dt)
                 filtered_accelerations = filterVectorSignal(accelerations)
 
                 # Numerically differentiate filtered signals
@@ -69,12 +69,11 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
                 if len(starts) == 0:
                     continue
 
-
-                l_filtered_omegas.extend(filtered_omegas[starts[0] + throw_offset:])
-                l_omega_dots.extend(omega_dots[starts[0] + throw_offset:])
-                l_filtered_flywheel_omegas.extend(filtered_flywheel_omegas[starts[0] + throw_offset:])
-                l_flywheel_omega_dots.extend(flywheel_omega_dots[starts[0] + throw_offset:])
-                l_filtered_accelerations.extend(filtered_accelerations[starts[0] + throw_offset:])
+                l_filtered_omegas.extend(filtered_omegas[starts[0] + throw_offset:-lib.WINDOW_LENGTH])
+                l_omega_dots.extend(omega_dots[starts[0] + throw_offset:-lib.WINDOW_LENGTH])
+                l_filtered_flywheel_omegas.extend(filtered_flywheel_omegas[starts[0] + throw_offset:-lib.WINDOW_LENGTH])
+                l_flywheel_omega_dots.extend(flywheel_omega_dots[starts[0] + throw_offset:-lib.WINDOW_LENGTH])
+                l_filtered_accelerations.extend(filtered_accelerations[starts[0] + throw_offset:-lib.WINDOW_LENGTH])
             # Compute inertia tensor with filtered data
             I, residuals = computeI(l_filtered_omegas,
                          l_omega_dots,
@@ -127,7 +126,7 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
     return j, epsilon, psi
 
 if __name__=="__main__":
-    calibrateFlywheel("cyberzoo_tests",
-                                dirlist=["device", "calibration_copy"],
-                                GROUNDTRUTH_PATH="calibration_copy",
+    calibrateFlywheel("cyberzoo_tests_the_second",
+                                dirlist=["device", "calibration"],
+                                GROUNDTRUTH_PATH="calibration",
                                 new_motor=True)

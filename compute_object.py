@@ -3,7 +3,7 @@ import calibrate
 import lib
 import os
 
-LOGFILE_PATH = "input/cyberzoo_tests"
+LOGFILE_PATH = "input/cyberzoo_tests_the_second"
 dirlist = ["device", "config_empty"]
 
 sys.path.append(LOGFILE_PATH)
@@ -11,11 +11,13 @@ sys.path.append(LOGFILE_PATH)
 global_I = None
 global_I_true = None
 
+throw_offset = 300
 filter_cutoff = 50
 new_motor = True
-j, _, __ = calibrate.calibrateFlywheel("cyberzoo_tests",
-                                dirlist=["device", "calibration_copy"],
-                                GROUNDTRUTH_PATH="calibration_copy",
+
+j, _, __ = calibrate.calibrateFlywheel("cyberzoo_tests_the_second",
+                                dirlist=["device", "calibration"],
+                                GROUNDTRUTH_PATH="calibration",
                                 new_motor=new_motor)
 
 Is = []
@@ -38,18 +40,11 @@ for dir in dirlist:
 
             # Prepare discrete filter coefficients
             dt = (times[-1] - times[0]) / len(times)
-
-            filter_cutoff = max(max(abs(flywheel_omegas[:,0])),
-                                max(abs(flywheel_omegas[:,1])),
-                                max(abs(flywheel_omegas[:, 2]))) / (2 * math.pi) / 15
-            print(filter_cutoff)
-
             lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
 
             # Apply filter to data
             filtered_omegas = filterVectorSignal(omegas)
             filtered_flywheel_omegas = filterVectorSignal(flywheel_omegas)
-            lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff / 2, dt)
             filtered_accelerations = filterVectorSignal(accelerations)
 
             # Numerically differentiate filtered signals
@@ -75,14 +70,11 @@ for dir in dirlist:
                 continue
             lib.Jflywheel = j
 
-            throw_offset = 200
-
             l_filtered_omegas.extend(filtered_omegas[starts[0] + throw_offset:-lib.WINDOW_LENGTH])
             l_omega_dots.extend(omega_dots[starts[0] + throw_offset:-lib.WINDOW_LENGTH])
             l_filtered_flywheel_omegas.extend(filtered_flywheel_omegas[starts[0] + throw_offset:-lib.WINDOW_LENGTH])
             l_flywheel_omega_dots.extend(flywheel_omega_dots[starts[0] + throw_offset:-lib.WINDOW_LENGTH])
             l_filtered_accelerations.extend(filtered_accelerations[starts[0] + throw_offset:-lib.WINDOW_LENGTH])
-
         # Compute inertia tensor with filtered data
         I, residuals = computeI(l_filtered_omegas,
                      l_omega_dots,

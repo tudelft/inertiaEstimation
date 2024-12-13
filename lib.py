@@ -163,7 +163,7 @@ deriv_coefs = derivativeCoefficients(m, f).reshape(-1, 1)
 #     new_signal[-1] = new_signal[-2]
 #     return new_signal
 
-WINDOW_LENGTH = 100
+WINDOW_LENGTH = 100 # used to be 100
 def differentiateSignal(signal, dt):
     return np.gradient(signal, dt)
     # return scipy.signal.savgol_filter(signal, window_length=window_length, polyorder=1, delta=dt, deriv=1)
@@ -267,6 +267,9 @@ def computeError(I, I_true):
     lambdas_true[:] = lambdas_true[[2,1,0]]
     R[:, :]         = R[:, [2,1,0]]
     R_true[:, :]    = R_true[:, [2,1,0]]
+
+    print("==== LAMBDAS   ", lambdas)
+    print("==True LAMBDAS ", lambdas_true)
 
     R /= np.linalg.det(R)
     R_true /= np.linalg.det(R_true)

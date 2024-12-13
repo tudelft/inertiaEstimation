@@ -6,13 +6,13 @@ import os
 import pathlib
 import calibrate
 
-LOGFILE_PATH = "block_experiment/test"
+LOGFILE_PATH = "cyberzoo_tests_the_second/config_a"
 LOGFILES_ROOT = "input"
 SAVE_FOR_PUBLICATION = False
 
-j, _, __ = calibrate.calibrateFlywheel("block_experiment",
-                                dirlist=["device", "test"],
-                                GROUNDTRUTH_PATH="",
+j, _, __ = calibrate.calibrateFlywheel("cyberzoo_tests_the_second",
+                                dirlist=["device", "calibration"],
+                                GROUNDTRUTH_PATH="calibration",
                                 new_motor=True)
 
 for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFILE_PATH)):
@@ -24,7 +24,7 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
             = importDatafile(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, f))
 
         # Prepare discrete filter coefficients
-        filter_cutoff = 30
+        filter_cutoff = 100
         dt = (times[-1] - times[0])/len(times)
         lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
 
@@ -36,7 +36,6 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         # Numerically differentiate filtered signals
         jerks = differentiateVectorSignal(filtered_accelerations, dt)
         omega_dots = differentiateVectorSignal(filtered_omegas, dt)
-        # omega_dots = filterVectorSignal(omega_dots)
         flywheel_omega_dots = differentiateVectorSignal(filtered_flywheel_omegas, dt)
 
         filtered_omegas = delaySavGolFilterVectorSignal(filtered_omegas)
@@ -60,8 +59,8 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         # timePlotVector(times, omega_dots, ax=ax1, label="Angular acceleration", linestyle="dashed", alpha=0.7)
         # timePlotVector(times, flywheel_omega_dots, ax=ax2, label="Flywheel angular acceleration", linestyle="dashed", alpha=0.7)
 
-        timePlotVector(times, accelerations, ax=ax1, label="Measured")
-        timePlotVector(times, filtered_accelerations, ax=ax1, label="Filtered", alpha=0.5)
+        timePlotVector(times, accelerations, ax=ax1, label="Measured", alpha=0.2)
+        timePlotVector(times, filtered_accelerations, ax=ax1, label="Filtered")
 
         timePlotVector(times, flywheel_omegas, ax=ax2, label="Measured", ylabel=r"${\omega}_f$ (rad/s)")
         timePlotVector(times, filtered_flywheel_omegas, ax=ax2, label="Filtered", ylabel=r"${\omega}_f$ (rad/s)", alpha=0.5)
@@ -78,7 +77,7 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         # Set flywheel inertia
         lib.Jflywheel = j # kg*m^2
 
-        throw_offset = +400
+        throw_offset = 300
 
         # Compute inertia tensor with filtered data
         I, residuals = computeI(filtered_omegas[starts[0]+throw_offset:],
@@ -90,11 +89,16 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
                      filtered_accelerations[starts[0]+throw_offset:])
         print(I)
 
-        simulation_omegas = simulateThrow(I,
-                                          times[starts[0]+throw_offset:],
-                                          filtered_omegas[starts[0]+throw_offset],
-                                          filtered_flywheel_omegas[starts[0]+throw_offset:],
-                                          flywheel_omega_dots[starts[0]+throw_offset:])
+        sys.path.append(os.path.join(LOGFILES_ROOT, LOGFILE_PATH))
+        import groundtruth
+
+        computeError(I, groundtruth.trueInertia)
+
+        # simulation_omegas = simulateThrow(I,
+        #                                   times[starts[0]+throw_offset:],
+        #                                   filtered_omegas[starts[0]+throw_offset],
+        #                                   filtered_flywheel_omegas[starts[0]+throw_offset:],
+        #                                   flywheel_omega_dots[starts[0]+throw_offset:])
         # timePlotVector(times[starts[0]+throw_offset+1:], simulation_omegas, label="Simulated", ax=ax1, linestyle="dashed", alpha=0.8)
 
         ax2.get_legend().remove()
