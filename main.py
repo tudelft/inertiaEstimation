@@ -6,13 +6,13 @@ import os
 import pathlib
 import calibrate
 
-LOGFILE_PATH = "cyberzoo_tests/config_a"
+LOGFILE_PATH = "block_experiment/test"
 LOGFILES_ROOT = "input"
 SAVE_FOR_PUBLICATION = False
 
-j, _, __ = calibrate.calibrateFlywheel("cyberzoo_tests",
-                                dirlist=["device", "calibration_copy"],
-                                GROUNDTRUTH_PATH="calibration_copy",
+j, _, __ = calibrate.calibrateFlywheel("block_experiment",
+                                dirlist=["device", "test"],
+                                GROUNDTRUTH_PATH="",
                                 new_motor=True)
 
 for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFILE_PATH)):
@@ -24,7 +24,7 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
             = importDatafile(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, f))
 
         # Prepare discrete filter coefficients
-        filter_cutoff = 40
+        filter_cutoff = 30
         dt = (times[-1] - times[0])/len(times)
         lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
 
@@ -55,10 +55,14 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
 
         # # Initialise plot
         fig, (ax1, ax2) = plt.subplots(2, 1, sharex="col", gridspec_kw={'height_ratios': [2, 1]})
-        timePlotVector(times, omegas, ax=ax1, label="Measured", ylabel=r"${\omega}$ (rad/s)")
-        timePlotVector(times, filtered_omegas, ax=ax1, label="Filtered", alpha=0.5)
+        # timePlotVector(times, omegas, ax=ax1, label="Measured", ylabel=r"${\omega}$ (rad/s)")
+        # timePlotVector(times, filtered_omegas, ax=ax1, label="Filtered", alpha=0.5)
         # timePlotVector(times, omega_dots, ax=ax1, label="Angular acceleration", linestyle="dashed", alpha=0.7)
         # timePlotVector(times, flywheel_omega_dots, ax=ax2, label="Flywheel angular acceleration", linestyle="dashed", alpha=0.7)
+
+        timePlotVector(times, accelerations, ax=ax1, label="Measured")
+        timePlotVector(times, filtered_accelerations, ax=ax1, label="Filtered", alpha=0.5)
+
         timePlotVector(times, flywheel_omegas, ax=ax2, label="Measured", ylabel=r"${\omega}_f$ (rad/s)")
         timePlotVector(times, filtered_flywheel_omegas, ax=ax2, label="Filtered", ylabel=r"${\omega}_f$ (rad/s)", alpha=0.5)
         ax2.invert_yaxis()
@@ -77,11 +81,11 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         throw_offset = +400
 
         # Compute inertia tensor with filtered data
-        I = computeI(filtered_omegas[starts[0]+throw_offset:],
+        I, residuals = computeI(filtered_omegas[starts[0]+throw_offset:],
                      omega_dots[starts[0]+throw_offset:],
                      filtered_flywheel_omegas[starts[0]+throw_offset:],
                      flywheel_omega_dots[starts[0]+throw_offset:])
-        x = computeX(filtered_omegas[starts[0]+throw_offset:],
+        x, resx = computeX(filtered_omegas[starts[0]+throw_offset:],
                      omega_dots[starts[0]+throw_offset:],
                      filtered_accelerations[starts[0]+throw_offset:])
         print(I)
@@ -91,7 +95,7 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
                                           filtered_omegas[starts[0]+throw_offset],
                                           filtered_flywheel_omegas[starts[0]+throw_offset:],
                                           flywheel_omega_dots[starts[0]+throw_offset:])
-        timePlotVector(times[starts[0]+throw_offset+1:], simulation_omegas, label="Simulated", ax=ax1, linestyle="dashed", alpha=0.8)
+        # timePlotVector(times[starts[0]+throw_offset+1:], simulation_omegas, label="Simulated", ax=ax1, linestyle="dashed", alpha=0.8)
 
         ax2.get_legend().remove()
 

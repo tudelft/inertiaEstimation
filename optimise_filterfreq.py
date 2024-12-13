@@ -76,11 +76,11 @@ def iter(iteration_params):
                 l_filtered_accelerations.extend(filtered_accelerations[starts[0] + throw_offset:])
 
             # Compute inertia tensor with filtered data
-            I = computeI(l_filtered_omegas,
+            I, residuals = computeI(l_filtered_omegas,
                          l_omega_dots,
                          l_filtered_flywheel_omegas,
                          l_flywheel_omega_dots)
-            x = computeX(l_filtered_omegas,
+            x, resx = computeX(l_filtered_omegas,
                          l_omega_dots,
                          l_filtered_accelerations)
             Is.append(I)

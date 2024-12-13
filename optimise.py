@@ -50,7 +50,7 @@ def function_to_optimise(x):
                 continue
 
             # Compute inertia tensor with filtered data
-            I = computeI(filtered_omegas[starts[0]:],
+            I, residuals = computeI(filtered_omegas[starts[0]:],
                          omega_dots[starts[0]:],
                          filtered_flywheel_omegas[starts[0]:],
                          flywheel_omega_dots[starts[0]:])

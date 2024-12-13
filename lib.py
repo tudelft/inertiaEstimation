@@ -184,10 +184,17 @@ def differentiateVectorSignal(signal, dt, *args, **kwargs):
         res.append(differentiateSignal(signal.T[i], dt, *args, **kwargs))
     return np.array(res).T
 
+# Severely reduces RAM usage at the cost of slightly increased computation time, due to an
+# increase in matrix multiplications, even though the resulting matrices are smaller
+OPTIMISATION = False
+
 def computeI(angular_velocities, angular_accelerations, flywheel_angular_velocities, flywheel_angular_accelerations):
-    A = []
-    B = []
-    ATA = np.zeros(36).reshape(6, 6)
+    if OPTIMISATION:
+        ATA = np.zeros(36).reshape(6, 6)
+        ATB = np.zeros(6).reshape(1, 6)
+    else:
+        A = []
+        B = []
     for i in range(len(angular_velocities)):
         omega = angular_velocities[i].flatten()
         omega_dot = angular_accelerations[i]
@@ -197,24 +204,31 @@ def computeI(angular_velocities, angular_accelerations, flywheel_angular_velocit
         zeta_X = [omega_dot[0], -omega[2] * omega[0] + omega_dot[1], -omega[2] * omega[1],
                   omega[1] * omega[0] + omega_dot[2], omega[1] ** 2 - omega[2] ** 2,
                   omega[1] * omega[2]]
-        A.append(zeta_X)
         zeta_Y = [omega[2] * omega[0], omega[2] * omega[1] + omega_dot[0], omega_dot[1],
                   omega[2] ** 2 - omega[0] ** 2, -omega[0] * omega[1] + omega_dot[2],
                   -omega[0] * omega[2]]
-        A.append(zeta_Y)
         zeta_Z = [-omega[1] * omega[0], omega[0] ** 2 - omega[1] ** 2, omega[0] * omega[1],
                   -omega[1] * omega[2] + omega_dot[0], omega[0] * omega[2] + omega_dot[1],
                   omega_dot[2]]
-        A.append(zeta_Z)
         zeta = np.matrix([zeta_X, zeta_Y, zeta_Z]).reshape((3, 6))
 
         global Jflywheel
-        beta = -np.cross(omega, Jflywheel * flywheel_omega) - Jflywheel * flywheel_omega_dot
-        B.extend(beta)
+        mu = -np.cross(omega, Jflywheel * (flywheel_omega + omega)) - Jflywheel * flywheel_omega_dot
 
-        ATA += np.matmul(zeta.T, zeta)
-    inertiaCoefficients, res, rank, s = np.linalg.lstsq(A, B, rcond=None)
-    return buildTensor(inertiaCoefficients)
+        if OPTIMISATION:
+            ATA += zeta.T @ zeta
+            ATB += zeta.T @ mu
+        else:
+            A.append(zeta_X)
+            A.append(zeta_Y)
+            A.append(zeta_Z)
+            B.extend(mu)
+    if OPTIMISATION:
+        inertiaCoefficients, residuals, rank, s = np.linalg.lstsq(ATA, ATB.reshape(6), rcond=None)
+    else:
+        inertiaCoefficients, residuals, rank, s = np.linalg.lstsq(A, B, rcond=None)
+
+    return buildTensor(inertiaCoefficients), residuals
 
 def computeX(angular_velocities, angular_accelerations, linear_accelerations):
     A = []
@@ -240,8 +254,8 @@ def computeX(angular_velocities, angular_accelerations, linear_accelerations):
 
     a = np.array(A).reshape(-1, 3)
     b = np.array(B).reshape(-1, 1)
-    x, res, rank, s = np.linalg.lstsq(a, b, rcond=None)
-    return x
+    x, residuals, rank, s = np.linalg.lstsq(a, b, rcond=None)
+    return x, residuals
 
 def computeError(I, I_true):
     # singular value decomposition gives guarantees on right-handedness of rotation matrix, i think. oops, it's not...

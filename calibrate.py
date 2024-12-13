@@ -76,11 +76,11 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
                 l_flywheel_omega_dots.extend(flywheel_omega_dots[starts[0] + throw_offset:])
                 l_filtered_accelerations.extend(filtered_accelerations[starts[0] + throw_offset:])
             # Compute inertia tensor with filtered data
-            I = computeI(l_filtered_omegas,
+            I, residuals = computeI(l_filtered_omegas,
                          l_omega_dots,
                          l_filtered_flywheel_omegas,
                          l_flywheel_omega_dots)
-            x = computeX(l_filtered_omegas,
+            x, resx = computeX(l_filtered_omegas,
                          l_omega_dots,
                          l_filtered_accelerations)
             Is.append(I)
@@ -95,13 +95,17 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
     r = (calibration_groundtruth.m_dev / calibration_groundtruth.m_obj) * (xs[0] - xs[1])
     s = xs[0] - xs[1]
 
-    left_side_matrix = calibration_groundtruth.trueInertia + parallelAxisTheorem(calibration_groundtruth.m_obj, r) + parallelAxisTheorem(calibration_groundtruth.m_dev, s)
+    translated_true_inertia = (calibration_groundtruth.trueInertia +
+                               parallelAxisTheorem(calibration_groundtruth.m_obj, r) +
+                               parallelAxisTheorem(calibration_groundtruth.m_dev, s))
     right_side_matrix = Is[1] - Is[0]
 
-    left_side_vector = buildVector(left_side_matrix)
+    left_side_vector = buildVector(translated_true_inertia)
     right_side_vector = buildVector(right_side_matrix)
     j = np.dot(right_side_vector, left_side_vector) / np.linalg.norm(right_side_vector) ** 2
     e = j * right_side_vector - left_side_vector
+
+    # phi = np.linalg.lstsq(right_side_matrix, left_side_vector)
 
     print(f"\nOrthogonal projection flywheel inertia:  {j:.4e} kgm^2")
     print(f"OPF inertial error:                      {np.linalg.norm(e):.4e} kgm^2")
