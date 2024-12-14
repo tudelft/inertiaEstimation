@@ -119,7 +119,7 @@ def filterSignal(signal, cutoff_freq=global_filter_cutoff):
     return scipy.signal.filtfilt(filter_coefs[0], filter_coefs[1], signal)
 
 def recomputeFilterCoefficients(filter_cutoff, dt):
-    return scipy.signal.butter(2, filter_cutoff, output="ba", btype="lowpass", fs=1/dt)
+    return scipy.signal.butter(4, filter_cutoff, output="ba", btype="lowpass", fs=1/dt)
 
 def filterVectorSignal(signal, **kwargs):
     res = []
@@ -166,7 +166,7 @@ deriv_coefs = derivativeCoefficients(m, f).reshape(-1, 1)
 WINDOW_LENGTH = 100 # used to be 100
 def differentiateSignal(signal, dt):
     return np.gradient(signal, dt)
-    # return scipy.signal.savgol_filter(signal, window_length=window_length, polyorder=1, delta=dt, deriv=1)
+    # return scipy.signal.savgol_filter(signal, window_length=WINDOW_LENGTH, polyorder=1, delta=dt, deriv=1)
 
 def delaySavGolFilterVectorSignal(signal, *args, **kwargs):
     res = []
@@ -175,6 +175,7 @@ def delaySavGolFilterVectorSignal(signal, *args, **kwargs):
     return np.array(res).T
 
 def delaySavGolFilterSignal(signal, window_length=86):
+    # raise Exception("Deprecated")
     return scipy.signal.savgol_filter(signal, window_length=window_length, polyorder=1)
 
 
@@ -332,7 +333,7 @@ betweenPeaks = False
 min_omega = 2
 
 def startsTumbling(times, absolute_omegas, absolute_accelerations, absolute_jerks, flywheel_omegas):
-    if abs(flywheel_omegas[-1][2]) > 0:
+    if abs(flywheel_omegas[-1][2]) > 10:
         return True
     else:
         return False

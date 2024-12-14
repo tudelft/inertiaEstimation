@@ -6,14 +6,16 @@ import os
 import pathlib
 import calibrate
 
-LOGFILE_PATH = "cyberzoo_tests_the_second/config_a"
+LOGFILE_PATH = "cyberzoo_tests_the_second/config_c"
 LOGFILES_ROOT = "input"
 SAVE_FOR_PUBLICATION = False
+
+new_motor = True
 
 j, _, __ = calibrate.calibrateFlywheel("cyberzoo_tests_the_second",
                                 dirlist=["device", "calibration"],
                                 GROUNDTRUTH_PATH="calibration",
-                                new_motor=True)
+                                new_motor=new_motor)
 
 for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFILE_PATH)):
     for f in filenames:
@@ -21,7 +23,7 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
             continue
         print(f)
         df, omegas, accelerations, times, flywheel_omegas \
-            = importDatafile(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, f))
+            = importDatafile(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, f), new_motor=new_motor)
 
         # Prepare discrete filter coefficients
         filter_cutoff = 100
@@ -29,9 +31,10 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
 
         # Apply filter to data
+        lib.filter_coefs = recomputeFilterCoefficients(250, dt)
         filtered_omegas = filterVectorSignal(omegas)
-        # lib.filter_coefs = recomputeFilterCoefficients(50, dt)
         filtered_flywheel_omegas = filterVectorSignal(flywheel_omegas)
+
         lib.filter_coefs = recomputeFilterCoefficients(50, dt)
         filtered_accelerations = filterVectorSignal(accelerations)
 
@@ -39,6 +42,10 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         jerks = differentiateVectorSignal(filtered_accelerations, dt)
         omega_dots = differentiateVectorSignal(filtered_omegas, dt)
         flywheel_omega_dots = differentiateVectorSignal(filtered_flywheel_omegas, dt)
+
+        lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
+        omega_dots = filterVectorSignal(omega_dots)
+        flywheel_omega_dots = filterVectorSignal(flywheel_omega_dots)
 
         # filtered_omegas = delaySavGolFilterVectorSignal(filtered_omegas)
         # filtered_flywheel_omegas = delaySavGolFilterVectorSignal(filtered_flywheel_omegas)

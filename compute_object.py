@@ -39,18 +39,31 @@ for dir in dirlist:
                 = importDatafile(os.path.join(dirpath, f), new_motor=new_motor)
 
             # Prepare discrete filter coefficients
+            filter_cutoff = 100
             dt = (times[-1] - times[0]) / len(times)
             lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
 
             # Apply filter to data
+            # filtered_omegas = omegas
+            # filtered_flywheel_omegas = flywheel_omegas
+            lib.filter_coefs = recomputeFilterCoefficients(300, dt)
             filtered_omegas = filterVectorSignal(omegas)
             filtered_flywheel_omegas = filterVectorSignal(flywheel_omegas)
+
+            lib.filter_coefs = recomputeFilterCoefficients(50, dt)
             filtered_accelerations = filterVectorSignal(accelerations)
 
             # Numerically differentiate filtered signals
             jerks = differentiateVectorSignal(filtered_accelerations, dt)
             omega_dots = differentiateVectorSignal(filtered_omegas, dt)
             flywheel_omega_dots = differentiateVectorSignal(filtered_flywheel_omegas, dt)
+
+            lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
+            omega_dots = filterVectorSignal(omega_dots)
+            flywheel_omega_dots = filterVectorSignal(flywheel_omega_dots)
+
+            # filtered_omegas = delaySavGolFilterVectorSignal(filtered_omegas)
+            # filtered_flywheel_omegas = delaySavGolFilterVectorSignal(filtered_flywheel_omegas)
 
             # Find lengths of filtered values
             absolute_accelerations = np.sqrt(accelerations[:, 0] ** 2 +
