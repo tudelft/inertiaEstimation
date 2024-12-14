@@ -30,7 +30,9 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
 
         # Apply filter to data
         filtered_omegas = filterVectorSignal(omegas)
+        # lib.filter_coefs = recomputeFilterCoefficients(50, dt)
         filtered_flywheel_omegas = filterVectorSignal(flywheel_omegas)
+        lib.filter_coefs = recomputeFilterCoefficients(50, dt)
         filtered_accelerations = filterVectorSignal(accelerations)
 
         # Numerically differentiate filtered signals
@@ -38,8 +40,8 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         omega_dots = differentiateVectorSignal(filtered_omegas, dt)
         flywheel_omega_dots = differentiateVectorSignal(filtered_flywheel_omegas, dt)
 
-        filtered_omegas = delaySavGolFilterVectorSignal(filtered_omegas)
-        filtered_flywheel_omegas = delaySavGolFilterVectorSignal(filtered_flywheel_omegas)
+        # filtered_omegas = delaySavGolFilterVectorSignal(filtered_omegas)
+        # filtered_flywheel_omegas = delaySavGolFilterVectorSignal(filtered_flywheel_omegas)
 
         # Find lengths of filtered values
         absolute_accelerations = np.sqrt(accelerations[:,0] ** 2 +
@@ -53,18 +55,18 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
                                  jerks[:,2] ** 2)
 
         # # Initialise plot
-        fig, (ax1, ax2) = plt.subplots(2, 1, sharex="col", gridspec_kw={'height_ratios': [2, 1]})
-        # timePlotVector(times, omegas, ax=ax1, label="Measured", ylabel=r"${\omega}$ (rad/s)")
-        # timePlotVector(times, filtered_omegas, ax=ax1, label="Filtered", alpha=0.5)
-        # timePlotVector(times, omega_dots, ax=ax1, label="Angular acceleration", linestyle="dashed", alpha=0.7)
-        # timePlotVector(times, flywheel_omega_dots, ax=ax2, label="Flywheel angular acceleration", linestyle="dashed", alpha=0.7)
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex="col", gridspec_kw={'height_ratios': [2, 1, 1]})
+        timePlotVector(times, omegas, ax=ax1, label="Measured", ylabel=r"${\omega}$ (s$^{-1}$)", alpha=0.4)
+        timePlotVector(times, filtered_omegas, ax=ax1, label="Filtered")
+        timePlotVector(times, omega_dots, ax=ax1, label="Angular acceleration", linestyle="dashed", alpha=0.8)
 
-        timePlotVector(times, accelerations, ax=ax1, label="Measured", alpha=0.2)
-        timePlotVector(times, filtered_accelerations, ax=ax1, label="Filtered")
+        timePlotVector(times, accelerations, ax=ax2, label="Measured", ylabel="Acceleration (ms$^{-1}$)", alpha=0.4)
+        timePlotVector(times, filtered_accelerations, ax=ax2, label="Filtered")
 
-        timePlotVector(times, flywheel_omegas, ax=ax2, label="Measured", ylabel=r"${\omega}_f$ (rad/s)")
-        timePlotVector(times, filtered_flywheel_omegas, ax=ax2, label="Filtered", ylabel=r"${\omega}_f$ (rad/s)", alpha=0.5)
-        ax2.invert_yaxis()
+        timePlotVector(times, flywheel_omegas, ax=ax3, label="Measured", ylabel=r"${\omega}_f$ (s$^{-1}$)", alpha=0.4)
+        timePlotVector(times, filtered_flywheel_omegas, ax=ax3, label="Filtered", ylabel=r"${\omega}_f$ (s$^{-1}$)")
+        timePlotVector(times, flywheel_omega_dots, ax=ax3, label="Flywheel angular acceleration", linestyle="dashed", alpha=0.8)
+        ax3.invert_yaxis()
 
         starts, ends = detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks, flywheel_omegas)
 
@@ -102,6 +104,7 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         # timePlotVector(times[starts[0]+throw_offset+1:], simulation_omegas, label="Simulated", ax=ax1, linestyle="dashed", alpha=0.8)
 
         ax2.get_legend().remove()
+        ax3.get_legend().remove()
 
         for s in starts:
             ax1.axvline([times[s + throw_offset] * 1e3], linestyle="dashed", color="gray")
