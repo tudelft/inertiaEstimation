@@ -18,38 +18,6 @@ new_motor = True
 #                                 GROUNDTRUTH_PATH="calibration",
 #                                 new_motor=new_motor)
 
-def fftPlot(sig, ax, dt=None, plot=True):
-    # Here it's assumes analytic signal (real signal...) - so only half of the axis is required
-
-    if dt is None:
-        dt = 1
-        t = np.arange(0, sig.shape[-1])
-        xLabel = 'samples'
-    else:
-        t = np.arange(0, sig.shape[-1]) * dt
-        xLabel = 'freq [Hz]'
-
-    if sig.shape[0] % 2 != 0:
-        warnings.warn("signal preferred to be even in size, autoFixing it...")
-        t = t[0:-1]
-        sig = sig[0:-1]
-
-    sigFFT = np.fft.fft(sig) / t.shape[0]  # Divided by size t for coherent magnitude
-
-    freq = np.fft.fftfreq(t.shape[0], d=dt)
-
-    # Plot analytic signal - right half of frequence axis needed only...
-    firstNegInd = np.argmax(freq < 0)
-    freqAxisPos = freq[0:firstNegInd]
-    sigFFTPos = 2 * sigFFT[0:firstNegInd]  # *2 because of magnitude of analytic signal
-
-    if plot:
-        ax.plot(freqAxisPos, np.abs(sigFFTPos), label="FFT")
-        ax.set_xlabel(xLabel)
-        ax.set_ylabel('mag')
-
-    return sigFFTPos, freqAxisPos
-
 for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFILE_PATH)):
     for f in filenames:
         if ".py" in f:
@@ -59,36 +27,31 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
             = importDatafile(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, f), new_motor=new_motor)
 
         # Prepare discrete filter coefficients
-        filter_cutoff = 100
         dt = (times[-1] - times[0]) / len(times)
 
         filtered_accelerations = filterVectorSignalButterworth(accelerations, 100, dt)
         # Apply filter to data
-        # filtered_omegas = omegas
+        filtered_omegas = omegas
         # filtered_flywheel_omegas = flywheel_omegas
         filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, 100, dt)
         filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
                                                           filtered_flywheel_omegas[:, 2] / (2 * math.pi),
-                                                          20,
+                                                          10,
                                                           dt)
-        filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
-                                                          filtered_flywheel_omegas[:, 2] / (math.pi),
-                                                          50,
-                                                          dt)
+        # filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
+        #                                                   filtered_flywheel_omegas[:, 2] / (math.pi),
+        #                                                   50,
+        #                                                   dt)
         filtered_omegas = filterVectorSignalButterworth(omegas, 100, dt)
-
-        # filtered_accelerations = filterNotchFrequencies(filtered_accelerations, [32, 199, 40], dt, bandwidth=0.05)
-        # filtered_omegas = filterNotchFrequencies(filtered_omegas, [32, 199, 40], dt, bandwidth=0.05)
+        filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, 100, dt)
 
         # Numerically differentiate filtered signals
         jerks = differentiateVectorSignal(accelerations, dt)
         omega_dots = differentiateVectorSignal(omegas, dt)
         flywheel_omega_dots = differentiateVectorSignal(flywheel_omegas, dt)
 
-        # omega_dots = filterVectorSignalButterworth(omega_dots, 100, dt)
-        # flywheel_omega_dots = filterVectorSignalButterworth(flywheel_omega_dots, 20, dt)
-
-        # TODO FIX NOTCH FILTERS PLZ
+        omega_dots = filterVectorSignalButterworth(omega_dots, 100, dt)
+        flywheel_omega_dots = filterVectorSignalButterworth(flywheel_omega_dots, 100, dt)
 
         # Find lengths of filtered values
         absolute_accelerations = np.sqrt(accelerations[:,0] ** 2 +
@@ -110,17 +73,13 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         timePlotVector(times, accelerations, ax=ax2, label="Measured", ylabel="Acceleration (ms$^{-1}$)", alpha=0.4)
         timePlotVector(times, filtered_accelerations, ax=ax2, label="Filtered")
 
-        # timePlotVector(times, flywheel_omegas, ax=ax3, label="Measured", ylabel=r"${\omega}_f$ (s$^{-1}$)", alpha=0.4)
-        # timePlotVector(times, filtered_flywheel_omegas, ax=ax3, label="Filtered", ylabel=r"${\omega}_f$ (s$^{-1}$)")
+        timePlotVector(times, flywheel_omegas, ax=ax3, label="Measured", ylabel=r"${\omega}_f$ (s$^{-1}$)", alpha=0.4)
+        timePlotVector(times, filtered_flywheel_omegas, ax=ax3, label="Filtered", ylabel=r"${\omega}_f$ (s$^{-1}$)")
         # timePlotVector(times, filtered_flywheel_omegas / (2 * math.pi), ax=ax3, label="Filtered", ylabel=r"${\omega}_f$ (s$^{-1}$)")
-        # timePlotVector(times, flywheel_omega_dots, ax=ax3, label="Flywheel angular acceleration", linestyle="dashed", alpha=0.8)
-        # ax3.invert_yaxis()
+        timePlotVector(times, flywheel_omega_dots, ax=ax3, label="Flywheel angular acceleration", linestyle="dashed", alpha=0.8)
+        ax3.invert_yaxis()
 
         starts, ends = detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks, flywheel_omegas)
-
-        fftOffset = 450
-        print((starts[0] + fftOffset) * dt * 1000, (starts[0]+fftOffset+800) * dt * 1000)
-        fftPlot(accelerations[starts[0] + fftOffset:starts[0]+fftOffset+800,0], ax3, dt=dt)
 
         if len(starts) == 0:
              print("No throws detected")

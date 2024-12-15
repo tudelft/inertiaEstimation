@@ -39,34 +39,31 @@ for dir in dirlist:
                 = importDatafile(os.path.join(dirpath, f), new_motor=new_motor)
 
             # Prepare discrete filter coefficients
-            filter_cutoff = 100
             dt = (times[-1] - times[0]) / len(times)
 
             filtered_accelerations = filterVectorSignalButterworth(accelerations, 100, dt)
             # Apply filter to data
-            # filtered_omegas = omegas
+            filtered_omegas = omegas
             # filtered_flywheel_omegas = flywheel_omegas
             filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, 100, dt)
             filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
                                                               filtered_flywheel_omegas[:, 2] / (2 * math.pi),
-                                                              20,
+                                                              10,
                                                               dt)
-            filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
-                                                              filtered_flywheel_omegas[:, 2] / (math.pi),
-                                                              50,
-                                                              dt)
+            # filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
+            #                                                   filtered_flywheel_omegas[:, 2] / (math.pi),
+            #                                                   50,
+            #                                                   dt)
             filtered_omegas = filterVectorSignalButterworth(omegas, 100, dt)
-
-            # filtered_accelerations = filterNotchFrequencies(filtered_accelerations, [32, 199, 40], dt, bandwidth=0.05)
-            # filtered_omegas = filterNotchFrequencies(filtered_omegas, [32, 199, 40], dt, bandwidth=0.05)
+            filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, 100, dt)
 
             # Numerically differentiate filtered signals
             jerks = differentiateVectorSignal(accelerations, dt)
             omega_dots = differentiateVectorSignal(omegas, dt)
             flywheel_omega_dots = differentiateVectorSignal(flywheel_omegas, dt)
 
-            # omega_dots = filterVectorSignalButterworth(omega_dots, 100, dt)
-            # flywheel_omega_dots = filterVectorSignalButterworth(flywheel_omega_dots, 20, dt)
+            omega_dots = filterVectorSignalButterworth(omega_dots, 100, dt)
+            flywheel_omega_dots = filterVectorSignalButterworth(flywheel_omega_dots, 100, dt)
 
             # Find lengths of filtered values
             absolute_accelerations = np.sqrt(accelerations[:, 0] ** 2 +

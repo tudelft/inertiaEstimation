@@ -148,33 +148,41 @@ def filterVectorDynamicNotch(signal, frequencies, bandwidth, dt):
         res.append(filterSignalDynamicNotch(signal[:, i].flatten(), frequencies, bandwidth, dt).flatten())
     return np.array(res).T
 
-window_size = 100
 def lapplySignalDynamicNotch(signal, frequencies, bandwidth, dt):
-    # Manufacture adjusted near-Toeplitz matrix. It's not exactly a Toeplitz matrix, since the filter has different
-    # filter coefficients for the changing flywheel frequencies. See https://en.wikipedia.org/wiki/Toeplitz_matrix#Discrete_convolution
+    """
+    Apply a dynamic notch filter to a signal using filtfilt for zero-phase filtering.
 
-    toeplitz = np.zeros((len(signal), len(signal)))
+    Parameters:
+        signal (array): Input signal.
+        frequencies (array): Array of frequencies corresponding to the signal.
+        bandwidth (float): Bandwidth for the notch filter.
+        dt (float): Time step.
+
+    Returns:
+        array: Filtered signal.
+    """
+    nyquist_freq = 0.5 / dt  # Nyquist frequency
+    result = np.zeros_like(signal)
+
     for i in range(len(signal)):
         flywheel_frequency = abs(frequencies[i])
-
-        if abs(flywheel_frequency) < 1e-16:
-            toeplitz[i][i] = 1
+        if flywheel_frequency < 1e-5:
+            result[i] = signal[i]
             continue
-        else:
-            # Q = flywheel_frequency / bandwidth
-            w0 = flywheel_frequency / (0.5 / dt)
-            Q = w0 / (bandwidth / (0.5 / dt))
-            b, a = scipy.signal.iirnotch(w0, Q)
 
-            if i == len(signal) - 1:
-                t, h = scipy.signal.dlti(b, a).impulse(n=2)
-                toeplitz[i][i:i + window_size] = h[0].flatten()[0]
-            else:
-                t, h = scipy.signal.dlti(b, a).impulse(n=min(len(signal) - i, window_size))
-                toeplitz[i][i:i + window_size] = h[0].flatten()
-    # print(toeplitz)
-    res = (signal.reshape(1, -1) @ toeplitz).T
-    return res
+        # Compute filter parameters
+        w0 = flywheel_frequency / nyquist_freq
+        Q = w0 / (bandwidth / nyquist_freq)
+        # print(Q)
+        Q = 1
+
+        # Design the notch filter
+        b, a = scipy.signal.iirnotch(flywheel_frequency, Q, 1 / dt)
+
+        # Apply zero-phase filtering to the entire signal
+        result[i] = scipy.signal.filtfilt(b, a, signal, method="pad")[i]
+
+    return result
 
 def filterSignalDynamicNotch(signal, frequencies, bandwidth, dt):
     left_result = lapplySignalDynamicNotch(signal, frequencies, bandwidth, dt)
