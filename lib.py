@@ -83,13 +83,6 @@ def buildTensor(x):
 def buildVector(t):
     return np.array([t[0,0], t[1,0], t[1,1], t[2,0], t[2,1], t[2,2]])
 
-def formatTicks(major=1000, minor=100):
-    pythonstfu = True
-    # loc = ticker.MultipleLocator(base=minor or 100)  # this locator puts ticks at regular intervals
-    # plt.gca().xaxis.set_minor_locator(loc)
-    # loc = ticker.MultipleLocator(base=major or 1000)  # this locator puts ticks at regular intervals
-    # plt.gca().xaxis.set_major_locator(loc)
-
 def timePlot(t, var, ylabel="", minor=None, major=None, ax=plt, **kwargs):
     ax.plot(t * 1000, var, **kwargs)
 
@@ -110,22 +103,85 @@ def timePlotVector(t, var, label="", ylabel="", minor=None, major=None, ax=plt, 
     # formatTicks(major, minor)
 
     if len(ylabel) > 0:
+        pass
         ax.set_ylabel(ylabel)
     ax.legend(bbox_to_anchor=(1.02, 0.5), loc="center left")
 
 global_filter_cutoff = 1000
 filter_coefs = None
-def filterSignal(signal, cutoff_freq=global_filter_cutoff):
+def filterSignalButterworth(signal, filter_cutoff, dt):
+    filter_coefs = scipy.signal.butter(4, filter_cutoff, output="ba", btype="lowpass", fs=1/dt)
     return scipy.signal.filtfilt(filter_coefs[0], filter_coefs[1], signal)
 
-def recomputeFilterCoefficients(filter_cutoff, dt):
-    return scipy.signal.butter(4, filter_cutoff, output="ba", btype="lowpass", fs=1/dt)
+def filterSignal(signal, filter_coefficients):
+    return scipy.signal.filtfilt(filter_coefficients[0], filter_coefficients[1], signal)
 
-def filterVectorSignal(signal, **kwargs):
+# def recomputeFilterCoefficients(filter_cutoff, dt):
+#     return scipy.signal.butter(4, filter_cutoff, output="ba", btype="lowpass", fs=1/dt)
+
+def computeNotchFilterCoefficients(filter_cutoff, dt, bandwidth):
+    Q = filter_cutoff / bandwidth
+    return scipy.signal.iirnotch(filter_cutoff, Q, 1 / dt)
+
+def filterNotchFrequencies(signal, frequencies, dt, **kwargs):
+    for f in frequencies:
+        filter_coefs = computeNotchFilterCoefficients(f, dt, **kwargs)
+        signal = filterVectorSignal(signal, filter_coefs)
+    return signal
+
+def filterVectorSignal(signal, filter_coefs):
     res = []
     for i in range(signal.shape[1]):
-        res.append(filterSignal(signal[:, i].flatten(), **kwargs).flatten())
+        res.append(filterSignal(signal[:, i].flatten(), filter_coefs).flatten())
     return np.array(res).T
+
+def filterVectorSignalButterworth(signal, filter_cutoff, dt):
+    res = []
+    for i in range(signal.shape[1]):
+        res.append(filterSignalButterworth(signal[:, i].flatten(), filter_cutoff, dt).flatten())
+    return np.array(res).T
+
+def filterVectorDynamicNotch(signal, frequencies, bandwidth, dt):
+    assert len(signal) == len(frequencies)
+    res = []
+    for i in range(signal.shape[1]):
+        res.append(filterSignalDynamicNotch(signal[:, i].flatten(), frequencies, bandwidth, dt).flatten())
+    return np.array(res).T
+
+window_size = 100
+def lapplySignalDynamicNotch(signal, frequencies, bandwidth, dt):
+    # Manufacture adjusted near-Toeplitz matrix. It's not exactly a Toeplitz matrix, since the filter has different
+    # filter coefficients for the changing flywheel frequencies. See https://en.wikipedia.org/wiki/Toeplitz_matrix#Discrete_convolution
+
+    toeplitz = np.zeros((len(signal), len(signal)))
+    for i in range(len(signal)):
+        flywheel_frequency = abs(frequencies[i])
+
+        if abs(flywheel_frequency) < 1e-16:
+            toeplitz[i][i] = 1
+            continue
+        else:
+            # Q = flywheel_frequency / bandwidth
+            w0 = flywheel_frequency / (0.5 / dt)
+            Q = w0 / (bandwidth / (0.5 / dt))
+            b, a = scipy.signal.iirnotch(w0, Q)
+
+            if i == len(signal) - 1:
+                t, h = scipy.signal.dlti(b, a).impulse(n=2)
+                toeplitz[i][i:i + window_size] = h[0].flatten()[0]
+            else:
+                t, h = scipy.signal.dlti(b, a).impulse(n=min(len(signal) - i, window_size))
+                toeplitz[i][i:i + window_size] = h[0].flatten()
+    # print(toeplitz)
+    res = (signal.reshape(1, -1) @ toeplitz).T
+    return res
+
+def filterSignalDynamicNotch(signal, frequencies, bandwidth, dt):
+    left_result = lapplySignalDynamicNotch(signal, frequencies, bandwidth, dt)
+    left_flipped = np.flip(left_result)
+    res_flipped = lapplySignalDynamicNotch(left_flipped, np.flip(frequencies), bandwidth, dt)
+    res = np.flip(res_flipped)
+    return res
 
 def derivativeCoefficients(n, f):
     T = np.zeros(n * n).reshape(n, n)

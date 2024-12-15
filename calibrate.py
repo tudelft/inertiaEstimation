@@ -35,31 +35,26 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
                                      new_motor=new_motor)
 
                 # Prepare discrete filter coefficients
-                filter_cutoff = 100
                 dt = (times[-1] - times[0]) / len(times)
-                lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
 
                 # Apply filter to data
-                # filtered_omegas = omegas
-                # filtered_flywheel_omegas = flywheel_omegas
-                lib.filter_coefs = recomputeFilterCoefficients(300, dt)
-                filtered_omegas = filterVectorSignal(omegas)
-                filtered_flywheel_omegas = filterVectorSignal(flywheel_omegas)
+                filtered_omegas = filterVectorSignalButterworth(omegas, 200, dt)
+                filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, 200, dt)
+                filtered_accelerations = filterVectorSignalButterworth(accelerations, 200, dt)
 
-                lib.filter_coefs = recomputeFilterCoefficients(50, dt)
-                filtered_accelerations = filterVectorSignal(accelerations)
+                filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
+                                                                  filtered_flywheel_omegas[:, 2] / (2 * math.pi),
+                                                                  5, # Hz
+                                                                  dt)
+                # filtered_accelerations = filterNotchFrequencies(filtered_accelerations, [32, 199, 40], dt, bandwidth=2)
 
                 # Numerically differentiate filtered signals
                 jerks = differentiateVectorSignal(filtered_accelerations, dt)
                 omega_dots = differentiateVectorSignal(filtered_omegas, dt)
                 flywheel_omega_dots = differentiateVectorSignal(filtered_flywheel_omegas, dt)
 
-                lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
-                omega_dots = filterVectorSignal(omega_dots)
-                flywheel_omega_dots = filterVectorSignal(flywheel_omega_dots)
-
-                # filtered_omegas = delaySavGolFilterVectorSignal(filtered_omegas)
-                # filtered_flywheel_omegas = delaySavGolFilterVectorSignal(filtered_flywheel_omegas)
+                omega_dots = filterVectorSignalButterworth(omega_dots, 50, dt)
+                flywheel_omega_dots = filterVectorSignalButterworth(flywheel_omega_dots, 200, dt)
 
                 # Find lengths of filtered values
                 absolute_accelerations = np.sqrt(accelerations[:, 0] ** 2 +

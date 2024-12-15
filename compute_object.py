@@ -4,7 +4,7 @@ import lib
 import os
 
 LOGFILE_PATH = "input/cyberzoo_tests_the_second"
-dirlist = ["device", "config_empty"]
+dirlist = ["device", "config_a"]
 
 sys.path.append(LOGFILE_PATH)
 
@@ -41,29 +41,32 @@ for dir in dirlist:
             # Prepare discrete filter coefficients
             filter_cutoff = 100
             dt = (times[-1] - times[0]) / len(times)
-            lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
 
+            filtered_accelerations = filterVectorSignalButterworth(accelerations, 100, dt)
             # Apply filter to data
             # filtered_omegas = omegas
             # filtered_flywheel_omegas = flywheel_omegas
-            lib.filter_coefs = recomputeFilterCoefficients(300, dt)
-            filtered_omegas = filterVectorSignal(omegas)
-            filtered_flywheel_omegas = filterVectorSignal(flywheel_omegas)
+            filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, 100, dt)
+            filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
+                                                              filtered_flywheel_omegas[:, 2] / (2 * math.pi),
+                                                              20,
+                                                              dt)
+            filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
+                                                              filtered_flywheel_omegas[:, 2] / (math.pi),
+                                                              50,
+                                                              dt)
+            filtered_omegas = filterVectorSignalButterworth(omegas, 100, dt)
 
-            lib.filter_coefs = recomputeFilterCoefficients(50, dt)
-            filtered_accelerations = filterVectorSignal(accelerations)
+            # filtered_accelerations = filterNotchFrequencies(filtered_accelerations, [32, 199, 40], dt, bandwidth=0.05)
+            # filtered_omegas = filterNotchFrequencies(filtered_omegas, [32, 199, 40], dt, bandwidth=0.05)
 
             # Numerically differentiate filtered signals
-            jerks = differentiateVectorSignal(filtered_accelerations, dt)
-            omega_dots = differentiateVectorSignal(filtered_omegas, dt)
-            flywheel_omega_dots = differentiateVectorSignal(filtered_flywheel_omegas, dt)
+            jerks = differentiateVectorSignal(accelerations, dt)
+            omega_dots = differentiateVectorSignal(omegas, dt)
+            flywheel_omega_dots = differentiateVectorSignal(flywheel_omegas, dt)
 
-            lib.filter_coefs = recomputeFilterCoefficients(filter_cutoff, dt)
-            omega_dots = filterVectorSignal(omega_dots)
-            flywheel_omega_dots = filterVectorSignal(flywheel_omega_dots)
-
-            # filtered_omegas = delaySavGolFilterVectorSignal(filtered_omegas)
-            # filtered_flywheel_omegas = delaySavGolFilterVectorSignal(filtered_flywheel_omegas)
+            # omega_dots = filterVectorSignalButterworth(omega_dots, 100, dt)
+            # flywheel_omega_dots = filterVectorSignalButterworth(flywheel_omega_dots, 20, dt)
 
             # Find lengths of filtered values
             absolute_accelerations = np.sqrt(accelerations[:, 0] ** 2 +
