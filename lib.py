@@ -384,6 +384,10 @@ def parallelAxisTheorem(m, r):
     return res
 
 def translateI(I_test, I_dev, m_obj, m_dev, x_dev, x_test):
+    """
+    Returns the object inertia based on combined (test) inertia, device inertia,
+    then masses and cog estimates
+    """
     r = (m_dev / m_obj) * (x_dev - x_test)
     s = x_test - x_dev
     return I_test - parallelAxisTheorem(m_dev, s) - I_dev - parallelAxisTheorem(m_obj, r)

@@ -11,12 +11,16 @@ LOGFILE_PATH = "cyberzoo_tests_the_second/config_a"
 LOGFILES_ROOT = "input"
 SAVE_FOR_PUBLICATION = False
 
+LP_CUTOFF = 100
+
 new_motor = True
 
-# j, _, __ = calibrate.calibrateFlywheel("cyberzoo_tests_the_second",
-#                                 dirlist=["device", "calibration"],
-#                                 GROUNDTRUTH_PATH="calibration",
-#                                 new_motor=new_motor)
+j, _, __, I_dev, x_dev = calibrate.calibrateFlywheel(
+                            "cyberzoo_tests_the_second",
+                            dirlist=["device", "calibration"],
+                            GROUNDTRUTH_PATH="calibration",
+                            new_motor=new_motor,
+                            )
 
 for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFILE_PATH)):
     for f in filenames:
@@ -29,11 +33,11 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         # Prepare discrete filter coefficients
         dt = (times[-1] - times[0]) / len(times)
 
-        filtered_accelerations = filterVectorSignalButterworth(accelerations, 100, dt)
+        filtered_accelerations = filterVectorSignalButterworth(accelerations, LP_CUTOFF, dt)
         # Apply filter to data
         filtered_omegas = omegas
         # filtered_flywheel_omegas = flywheel_omegas
-        filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, 100, dt)
+        filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, LP_CUTOFF, dt)
         filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
                                                           filtered_flywheel_omegas[:, 2] / (2 * math.pi),
                                                           10,
@@ -42,16 +46,16 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         #                                                   filtered_flywheel_omegas[:, 2] / (math.pi),
         #                                                   50,
         #                                                   dt)
-        filtered_omegas = filterVectorSignalButterworth(omegas, 100, dt)
-        filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, 100, dt)
+        filtered_omegas = filterVectorSignalButterworth(omegas, LP_CUTOFF, dt)
+        filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, LP_CUTOFF, dt)
 
         # Numerically differentiate filtered signals
         jerks = differentiateVectorSignal(accelerations, dt)
         omega_dots = differentiateVectorSignal(omegas, dt)
         flywheel_omega_dots = differentiateVectorSignal(flywheel_omegas, dt)
 
-        omega_dots = filterVectorSignalButterworth(omega_dots, 100, dt)
-        flywheel_omega_dots = filterVectorSignalButterworth(flywheel_omega_dots, 100, dt)
+        omega_dots = filterVectorSignalButterworth(omega_dots, LP_CUTOFF, dt)
+        flywheel_omega_dots = filterVectorSignalButterworth(flywheel_omega_dots, LP_CUTOFF, dt)
 
         # Find lengths of filtered values
         absolute_accelerations = np.sqrt(accelerations[:,0] ** 2 +
@@ -88,35 +92,43 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
              # sys.exit()
 
         # Set flywheel inertia
-        # lib.Jflywheel = j # kg*m^2
-        lib.Jflywheel = 1
+        lib.Jflywheel = j # kg*m^2
+        # lib.Jflywheel = 1
 
         throw_offset = 300
 
         # Compute inertia tensor with filtered data
-        # I, residuals = computeI(filtered_omegas[starts[0]+throw_offset:],
-        #              omega_dots[starts[0]+throw_offset:],
-        #              filtered_flywheel_omegas[starts[0]+throw_offset:],
-        #              flywheel_omega_dots[starts[0]+throw_offset:])
-        # x, resx = computeX(filtered_omegas[starts[0]+throw_offset:],
-        #              omega_dots[starts[0]+throw_offset:],
-        #              filtered_accelerations[starts[0]+throw_offset:])
-        # print(I)
+        I_test, residuals = computeI(filtered_omegas[starts[0]+throw_offset:],
+                     omega_dots[starts[0]+throw_offset:],
+                     filtered_flywheel_omegas[starts[0]+throw_offset:],
+                     flywheel_omega_dots[starts[0]+throw_offset:])
+        x_test, resx = computeX(filtered_omegas[starts[0]+throw_offset:],
+                     omega_dots[starts[0]+throw_offset:],
+                     filtered_accelerations[starts[0]+throw_offset:])
 
-        # sys.path.append(os.path.join(LOGFILES_ROOT, LOGFILE_PATH))
-        # import groundtruth
-        #
-        # computeError(I, groundtruth.trueInertia)
 
-        # simulation_omegas = simulateThrow(I,
-        #                                   times[starts[0]+throw_offset:],
-        #                                   filtered_omegas[starts[0]+throw_offset],
-        #                                   filtered_flywheel_omegas[starts[0]+throw_offset:],
-        #                                   flywheel_omega_dots[starts[0]+throw_offset:])
-        # timePlotVector(times[starts[0]+throw_offset+1:], simulation_omegas, label="Simulated", ax=ax1, linestyle="dashed", alpha=0.8)
+        sys.path.append(os.path.join(LOGFILES_ROOT, LOGFILE_PATH))
+        import groundtruth
 
-        # ax2.get_legend().remove()
-        # ax3.get_legend().remove()
+        I_obj = translateI(I_test, I_dev, groundtruth.m_obj, groundtruth.m_dev, x_dev, x_test)
+        print(I_test)
+        print(I_obj)
+
+        computeError(I_obj, groundtruth.trueInertia)
+        print(groundtruth.trueInertia)
+        
+        del groundtruth
+        sys.path.remove(os.path.join(LOGFILES_ROOT, LOGFILE_PATH))
+
+        simulation_omegas = simulateThrow(I_test,
+                                          times[starts[0]+throw_offset:],
+                                          filtered_omegas[starts[0]+throw_offset],
+                                          filtered_flywheel_omegas[starts[0]+throw_offset:],
+                                          flywheel_omega_dots[starts[0]+throw_offset:])
+        timePlotVector(times[starts[0]+throw_offset+1:], simulation_omegas, label="Simulated", ax=ax1, linestyle="dashed", alpha=0.8)
+
+        ax2.get_legend().remove()
+        ax3.get_legend().remove()
 
         for s in starts:
             ax1.axvline([times[s + throw_offset] * 1e3], linestyle="dashed", color="gray")
@@ -140,13 +152,13 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
             # formatTicks(100, 20)
             plt.tight_layout(pad=0.1)
             # plt.subplots_adjust(left=0.06, right=0.88, top=0.95, bottom=0.05)
-            manager = plt.get_current_fig_manager()
-            manager.window.move(-1680, 0)
-            manager.window.showMaximized()
+            #manager = plt.get_current_fig_manager()
+            #manager.window.move(-1680, 0)
+            #manager.window.showMaximized()
 
             def on_resize(event):
                 fig.tight_layout()
                 fig.canvas.draw()
             cid = fig.canvas.mpl_connect('resize_event', on_resize)
-            plt.show()
+            #plt.show()
     break

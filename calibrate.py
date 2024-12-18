@@ -19,6 +19,8 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
 
     Is = []
     xs = []
+    # iterate first over device-only datafiles, then over device-plus-calibration
+    # assuming j = 1 kgm^2
     for dir in dirlist:
         l_filtered_omegas = []
         l_omega_dots = []
@@ -97,22 +99,33 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
             xs.append(x)
             break
 
+    # assign inertias and cog found above
+    I_dev_j1 = Is[0]
+    x_dev_j1 = xs[0]
+    I_dev_plus_cal_j1 = Is[1]
+    x_dev_plus_cal_j1 = xs[1]
+
+    # with known calibration body inertia tensor, calibrate flywheel inertia 
+    # and device inertia
     try:
         import calibration_groundtruth
     except ImportError:
         import groundtruth as calibration_groundtruth
 
-    r = (calibration_groundtruth.m_dev / calibration_groundtruth.m_obj) * (xs[0] - xs[1])
-    s = xs[0] - xs[1]
+    s = x_dev_j1 - x_dev_plus_cal_j1
+    r = (calibration_groundtruth.m_dev / calibration_groundtruth.m_obj) * s
 
     translated_true_inertia = (calibration_groundtruth.trueInertia +
                                parallelAxisTheorem(calibration_groundtruth.m_obj, r) +
                                parallelAxisTheorem(calibration_groundtruth.m_dev, s))
-    right_side_matrix = Is[1] - Is[0]
+    right_side_matrix = I_dev_plus_cal_j1 - I_dev_j1
 
     left_side_vector = buildVector(translated_true_inertia)
     right_side_vector = buildVector(right_side_matrix)
     j = np.dot(right_side_vector, left_side_vector) / np.linalg.norm(right_side_vector) ** 2
+
+    I_dev = I_dev_j1 * j
+
     e = j * right_side_vector - left_side_vector
 
     # phi = np.linalg.lstsq(right_side_matrix, left_side_vector)
@@ -134,7 +147,8 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
 
     del calibration_groundtruth
     sys.path.remove(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, GROUNDTRUTH_PATH))
-    return j, epsilon, psi
+
+    return j, epsilon, psi, I_dev, x_dev_j1
 
 if __name__=="__main__":
     calibrateFlywheel("cyberzoo_tests_the_second",
