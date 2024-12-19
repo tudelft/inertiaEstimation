@@ -5,6 +5,8 @@ LOGFILES_ROOT = "input"
 LOGFILE_PATH = "cyberzoo_test_the_second"
 dirlist = ["device", "test"]
 
+LP_CUTOFF = 100
+
 # window_length = 250
 throw_offset = 300
 default_filter_cutoff = 150

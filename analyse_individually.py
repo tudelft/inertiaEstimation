@@ -1,17 +1,15 @@
-import sys
-
 from lib import *
 import lib
 import os
 import pathlib
 import calibrate
-import warnings
 
-LOGFILE_PATH = "cyberzoo_tests_the_second/config_a"
+LOGFILE_PATH = "cyberzoo_tests_the_second/config_c"
 LOGFILES_ROOT = "input"
 SAVE_FOR_PUBLICATION = False
 
 LP_CUTOFF = 100
+throw_offset = 300
 
 new_motor = True
 
@@ -35,12 +33,12 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
 
         filtered_accelerations = filterVectorSignalButterworth(accelerations, LP_CUTOFF, dt)
         # Apply filter to data
-        filtered_omegas = omegas
+        # filtered_omegas = omegas
         # filtered_flywheel_omegas = flywheel_omegas
         filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, LP_CUTOFF, dt)
         filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
                                                           filtered_flywheel_omegas[:, 2] / (2 * math.pi),
-                                                          10,
+                                                          10, #2.27
                                                           dt)
         # filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
         #                                                   filtered_flywheel_omegas[:, 2] / (math.pi),
@@ -94,8 +92,6 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
         # Set flywheel inertia
         lib.Jflywheel = j # kg*m^2
         # lib.Jflywheel = 1
-
-        throw_offset = 300
 
         # Compute inertia tensor with filtered data
         I_test, residuals = computeI(filtered_omegas[starts[0]+throw_offset:],
@@ -160,5 +156,5 @@ for (dirpath, dirnames, filenames) in os.walk(os.path.join(LOGFILES_ROOT, LOGFIL
                 fig.tight_layout()
                 fig.canvas.draw()
             cid = fig.canvas.mpl_connect('resize_event', on_resize)
-            #plt.show()
+            plt.show()
     break

@@ -145,36 +145,22 @@ def filterVectorDynamicNotch(signal, frequencies, bandwidth, dt):
     assert len(signal) == len(frequencies)
     res = []
     for i in range(signal.shape[1]):
-        res.append(filterSignalDynamicNotch(signal[:, i].flatten(), frequencies, bandwidth, dt).flatten())
+        res.append(applySignalDynamicNotch(signal[:, i].flatten(), frequencies, bandwidth, dt).flatten())
     return np.array(res).T
 
-def lapplySignalDynamicNotch(signal, frequencies, bandwidth, dt):
-    """
-    Apply a dynamic notch filter to a signal using filtfilt for zero-phase filtering.
-
-    Parameters:
-        signal (array): Input signal.
-        frequencies (array): Array of frequencies corresponding to the signal.
-        bandwidth (float): Bandwidth for the notch filter.
-        dt (float): Time step.
-
-    Returns:
-        array: Filtered signal.
-    """
+def applySignalDynamicNotch(signal, frequencies, bandwidth, dt):
     nyquist_freq = 0.5 / dt  # Nyquist frequency
     result = np.zeros_like(signal)
 
     for i in range(len(signal)):
         flywheel_frequency = abs(frequencies[i])
-        if flywheel_frequency < 1e-5:
+        if flywheel_frequency < 20:
             result[i] = signal[i]
             continue
 
         # Compute filter parameters
         w0 = flywheel_frequency / nyquist_freq
         Q = w0 / (bandwidth / nyquist_freq)
-        # print(Q)
-        Q = 1
 
         # Design the notch filter
         b, a = scipy.signal.iirnotch(flywheel_frequency, Q, 1 / dt)
@@ -184,53 +170,10 @@ def lapplySignalDynamicNotch(signal, frequencies, bandwidth, dt):
 
     return result
 
-def filterSignalDynamicNotch(signal, frequencies, bandwidth, dt):
-    left_result = lapplySignalDynamicNotch(signal, frequencies, bandwidth, dt)
-    left_flipped = np.flip(left_result)
-    res_flipped = lapplySignalDynamicNotch(left_flipped, np.flip(frequencies), bandwidth, dt)
-    res = np.flip(res_flipped)
-    return res
-
-def derivativeCoefficients(n, f):
-    T = np.zeros(n * n).reshape(n, n)
-    res = np.zeros(n)
-    res[1] = 1
-
-    for y in range(n):
-        for x in range(n):
-            if y == 0:
-                T[y, x] = 1
-            elif x == 0:
-                T[y, x] = 0
-            else:
-                T[y, x] = (-x) ** y / math.factorial(y)
-    res = np.flip(np.linalg.solve(T, res))
-
-    deriv_coefs_kernel = np.zeros(len(res) * f)
-    for i, c in enumerate(res):
-        deriv_coefs_kernel[i * f] = c
-    return deriv_coefs_kernel * m / ((m + 1) * f)
-
-m = 4 # Order of accuracy + 1
-f = 1 #
-deriv_coefs = derivativeCoefficients(m, f).reshape(-1, 1)
-# def differentiateSignal(signal, dt):
-#     global deriv_coefs
-#     h = dt
-#
-#     signal = np.array(signal)
-#     sig = signal.reshape(-1)
-#     deriv_coefs = deriv_coefs.flatten()
-#
-#     new_signal = np.convolve(sig, np.flip(deriv_coefs), "same") / h
-#     new_signal[0] = new_signal[1]
-#     new_signal[-1] = new_signal[-2]
-#     return new_signal
-
-WINDOW_LENGTH = 100 # used to be 100
+WINDOW_LENGTH = 50 # used to be 100
 def differentiateSignal(signal, dt):
-    return np.gradient(signal, dt)
-    # return scipy.signal.savgol_filter(signal, window_length=WINDOW_LENGTH, polyorder=1, delta=dt, deriv=1)
+    # return np.gradient(signal, dt)
+    return scipy.signal.savgol_filter(signal, window_length=WINDOW_LENGTH, polyorder=1, delta=dt, deriv=1)
 
 def delaySavGolFilterVectorSignal(signal, *args, **kwargs):
     res = []
@@ -332,9 +275,6 @@ def computeError(I, I_true):
     lambdas_true[:] = lambdas_true[[2,1,0]]
     R[:, :]         = R[:, [2,1,0]]
     R_true[:, :]    = R_true[:, [2,1,0]]
-
-    print("==== LAMBDAS   ", lambdas)
-    print("==True LAMBDAS ", lambdas_true)
 
     R /= np.linalg.det(R)
     R_true /= np.linalg.det(R_true)
