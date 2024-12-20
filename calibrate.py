@@ -5,8 +5,6 @@ LOGFILES_ROOT = "input"
 LOGFILE_PATH = "cyberzoo_test_the_second"
 dirlist = ["device", "test"]
 
-LP_CUTOFF = 100
-
 # window_length = 250
 throw_offset = 300
 default_filter_cutoff = 150
@@ -38,43 +36,10 @@ def calibrateFlywheel(LOGFILE_PATH, LOGFILES_ROOT = "input", dirlist = ["device"
                     = importDatafile(os.path.join(LOGFILES_ROOT, LOGFILE_PATH, dir, f),
                                      new_motor=new_motor)
 
-                # Prepare discrete filter coefficients
-                dt = (times[-1] - times[0]) / len(times)
-
-                filtered_accelerations = filterVectorSignalButterworth(accelerations, 100, dt)
-                # Apply filter to data
-                filtered_omegas = omegas
-                # filtered_flywheel_omegas = flywheel_omegas
-                filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, 100, dt)
-                filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
-                                                                  filtered_flywheel_omegas[:, 2] / (2 * math.pi),
-                                                                  10,
-                                                                  dt)
-                # filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
-                #                                                   filtered_flywheel_omegas[:, 2] / (math.pi),
-                #                                                   50,
-                #                                                   dt)
-                filtered_omegas = filterVectorSignalButterworth(omegas, 100, dt)
-                filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, 100, dt)
-
-                # Numerically differentiate filtered signals
-                jerks = differentiateVectorSignal(accelerations, dt)
-                omega_dots = differentiateVectorSignal(omegas, dt)
-                flywheel_omega_dots = differentiateVectorSignal(flywheel_omegas, dt)
-
-                omega_dots = filterVectorSignalButterworth(omega_dots, 100, dt)
-                flywheel_omega_dots = filterVectorSignalButterworth(flywheel_omega_dots, 100, dt)
-
-                # Find lengths of filtered values
-                absolute_accelerations = np.sqrt(accelerations[:, 0] ** 2 +
-                                                 accelerations[:, 1] ** 2 +
-                                                 accelerations[:, 2] ** 2)
-                absolute_omegas = np.sqrt(omegas[:, 0] ** 2 +
-                                          omegas[:, 1] ** 2 +
-                                          omegas[:, 2] ** 2)
-                absolute_jerks = np.sqrt(jerks[:, 0] ** 2 +
-                                         jerks[:, 1] ** 2 +
-                                         jerks[:, 2] ** 2)
+                filtered_accelerations, filtered_omegas, filtered_flywheel_omegas, \
+                    jerks, omega_dots, flywheel_omega_dots, \
+                    absolute_accelerations, absolute_omegas, absolute_jerks \
+                    = signalChain(accelerations, omegas, flywheel_omegas, times, filter_cutoff)
 
                 starts, ends = detectThrow(times, absolute_omegas, absolute_accelerations, absolute_jerks, flywheel_omegas)
 

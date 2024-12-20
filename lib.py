@@ -172,8 +172,8 @@ def applySignalDynamicNotch(signal, frequencies, bandwidth, dt):
 
 WINDOW_LENGTH = 50 # used to be 100
 def differentiateSignal(signal, dt):
-    # return np.gradient(signal, dt)
-    return scipy.signal.savgol_filter(signal, window_length=WINDOW_LENGTH, polyorder=1, delta=dt, deriv=1)
+    return np.gradient(signal, dt)
+    # return scipy.signal.savgol_filter(signal, window_length=WINDOW_LENGTH, polyorder=1, delta=dt, deriv=1)
 
 def delaySavGolFilterVectorSignal(signal, *args, **kwargs):
     res = []
@@ -191,6 +191,42 @@ def differentiateVectorSignal(signal, dt, *args, **kwargs):
     for i in range(signal.shape[1]):
         res.append(differentiateSignal(signal.T[i], dt, *args, **kwargs))
     return np.array(res).T
+
+def signalChain(accelerations, omegas, flywheel_omegas, times, LP_CUTOFF):
+    # Prepare discrete filter coefficients
+    dt = (times[-1] - times[0]) / len(times)
+
+    filtered_accelerations = filterVectorSignalButterworth(accelerations, LP_CUTOFF, dt)
+    filtered_omegas = filterVectorSignalButterworth(omegas, LP_CUTOFF, dt)
+    filtered_flywheel_omegas = filterVectorSignalButterworth(flywheel_omegas, LP_CUTOFF, dt)
+    #filtered_accelerations = filterVectorDynamicNotch(filtered_accelerations,
+    #                                                  filtered_flywheel_omegas[:, 2] / (2 * math.pi),
+    #                                                  10,
+    #                                                  dt)
+
+    # Numerically differentiate filtered signals
+    jerks = differentiateVectorSignal(accelerations, dt)
+    omega_dots = differentiateVectorSignal(omegas, dt)
+    flywheel_omega_dots = differentiateVectorSignal(flywheel_omegas, dt)
+
+    omega_dots = filterVectorSignalButterworth(omega_dots, LP_CUTOFF, dt)
+    flywheel_omega_dots = filterVectorSignalButterworth(flywheel_omega_dots, LP_CUTOFF, dt)
+
+    # Find lengths of filtered values
+    absolute_accelerations = np.sqrt(accelerations[:,0] ** 2 +
+                                     accelerations[:,1] ** 2 +
+                                     accelerations[:,2] ** 2)
+    absolute_omegas = np.sqrt(omegas[:,0] ** 2 +
+                              omegas[:,1] ** 2 +
+                              omegas[:,2] ** 2)
+    absolute_jerks = np.sqrt(jerks[:,0] ** 2 +
+                             jerks[:,1] ** 2 +
+                             jerks[:,2] ** 2)
+
+    return filtered_accelerations, filtered_omegas, filtered_flywheel_omegas, \
+        jerks, omega_dots, flywheel_omega_dots, \
+        absolute_accelerations, absolute_omegas, absolute_jerks
+
 
 # Severely reduces RAM usage at the cost of slightly increased computation time, due to an
 # increase in matrix multiplications, even though the resulting matrices are smaller
