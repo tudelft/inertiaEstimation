@@ -102,8 +102,8 @@ def analyse_single_file(filename, config, calib, throw_offset=300, filter_cutoff
 ====== Output for Object "{config.name}" using datafile "{filename}"
 ====================================================================
 """)
-    logger.info(f"Mass was given as (kg):\n{config.m_obj}")
-    logger.info(f"Center of gravity found at (mm):\n{1e3*x_obj.squeeze()}")
+    logger.info(f"Mass was given as (kg)         : {config.m_obj}")
+    logger.info(f"Center of gravity found at (mm): {1e3*x_obj.squeeze()}")
     logger.info(f"Inertia matrix found as (kgmm2):\n{1e6*I_obj}\n")
 
     # logging
@@ -177,7 +177,7 @@ if __name__=="__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument("data", type=str, metavar="DATA_PATH", help="Folder contraining object-under-test data BFL files, config.py and optionally groundtruth.py")
     parser.add_argument("calibration", type=str, metavar="CALIBRATION", help="Calibration output python file from calibrate.py")
-    parser.add_argument("--output", type=str, metavar="PATH", default=None, help="Folder to write output to")
+    parser.add_argument("--output", type=str, metavar="PATH", default=None, help="If passed, will write output dataframe pickle to this folder")
     parser.add_argument("--offset", type=int, default=300, metavar="SAMPLES", help="After detection of throw, skip SAMPLES")
     parser.add_argument("--cutoff", type=float, default=20, help="Lowpass filter cutoff in Hz")
     parser.add_argument("--plots", action="store_true", help="Give plot output")
@@ -234,6 +234,6 @@ if __name__=="__main__":
     # output final results table for later analysis
     if args.output is not None:
         outfilename = os.path.join(args.output, f"{os.path.basename(args.data)}.pkl")
-        logger.info(f"Writing output pickle to {outfilename}")
+        print(f"Writing output pickle to {outfilename}")
         pathlib.Path(args.output).mkdir(parents=True, exist_ok=True)
         res.to_pickle(outfilename)

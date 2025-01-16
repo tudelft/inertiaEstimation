@@ -1,8 +1,9 @@
 import numpy as np
 
-# CONFIGURATION 02: light flywheel
-
+# device mass
 m_dev = 0.0997  # [kg]
+
+# proof body mass and inertia
 m_obj = 0.346  # [kg]
 
 Ixx = 1 / 12 * m_obj * (0.0302 ** 2 + 0.0700 ** 2)

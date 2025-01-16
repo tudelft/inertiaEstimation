@@ -17,6 +17,8 @@ for pkl in args.pickles:
     else:
         data = pd.concat( (data, pd.read_pickle(pkl)), ignore_index=True)
 
+data.dropna(inplace=True)
+
 for idx, row in data.iterrows():
     # make config names shorter
     data.loc[idx, "config"] = os.path.basename(row["config"])

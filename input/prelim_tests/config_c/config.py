@@ -1,9 +1,10 @@
 import numpy as np
 import lib
 
-# CONFIGURATION 02: heavy flywheel, larger motor
+# name and m_obj must be set, the rest can be None or unset
+# to compute error metrics, set I_obj, and optinally x_obj
 
-m_dev = 0.09953  # [kg]
+name = "C"
 
 grid = np.array([
     [1, 0, 1, 0, 0, 1, 0, 1],

@@ -38,10 +38,10 @@ def calibrate(calibration_path, output, throw_offset=300, filter_cutoff=20, new_
     # iterate first over device-only datafiles, then over device-plus-calibration
     # assuming j = 1 kgm^2
     device_only_path = os.path.join(calibration_path, "device_only")
-    proof_mass_path = os.path.join(calibration_path, "proof_mass")
+    proof_body_path = os.path.join(calibration_path, "proof_body")
 
     Is, xs = [], []
-    for direc in [device_only_path, proof_mass_path]:
+    for direc in [device_only_path, proof_body_path]:
         l_filtered_omegas = []
         l_omega_dots = []
         l_filtered_flywheel_omegas = []
@@ -157,7 +157,7 @@ def calibrate(calibration_path, output, throw_offset=300, filter_cutoff=20, new_
 ################## Output to calibration file #################
 ###############################################################
 
-    logger.info(f"Saving calibration to {output}...")
+    print(f"Saving calibration to {output}")
 
     pathlib.Path(os.path.dirname(output)).mkdir(parents=True, exist_ok=True)
     with open(output, "w") as outfile:
