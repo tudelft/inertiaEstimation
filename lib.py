@@ -301,7 +301,7 @@ def computeX(angular_velocities, angular_accelerations, linear_accelerations):
     x, residuals, rank, s = np.linalg.lstsq(a, b, rcond=None)
     return x, residuals
 
-def computeError(I, I_true):
+def computeError(I, I_true, doPrint=True):
     # singular value decomposition gives guarantees on right-handedness of rotation matrix, i think. oops, it's not...
     R, lambdas, _ = np.linalg.svd(I)
     R_true, lambdas_true, _ = np.linalg.svd(I_true)
@@ -338,15 +338,16 @@ def computeError(I, I_true):
             rotation_error = scipy.spatial.transform.Rotation.from_matrix(R_error)
             euler_error = rotation_error.as_euler('zyx')  # [rad]
 
-    print(f"Alignment error:           {psi * 180 / math.pi: 0.2f}°")
-    print(f"  Euler around z:          {euler_error[0] * 180/math.pi: 0.2f}°")
-    print(f"  Euler around y:          {euler_error[1] * 180/math.pi: 0.2f}°")
-    print(f"  Euler around x:          {euler_error[2] * 180/math.pi: 0.2f}°")
-    print(f"Absolute inertial error:   {eigval_error_abs: 0.2e} kgm²")
-    print(f"Inertial norm:             {inertial_norm: 0.2e} kgm²")
-    print(f"Inertial error:            {eigval_error * 100: 0.2f}%")
+    if doPrint:
+        print(f"Alignment error:           {psi * 180 / math.pi: 0.2f}°")
+        print(f"  Euler around z:          {euler_error[0] * 180/math.pi: 0.2f}°")
+        print(f"  Euler around y:          {euler_error[1] * 180/math.pi: 0.2f}°")
+        print(f"  Euler around x:          {euler_error[2] * 180/math.pi: 0.2f}°")
+        print(f"Absolute inertial error:   {eigval_error_abs: 0.2e} kgm²")
+        print(f"Inertial norm:             {inertial_norm: 0.2e} kgm²")
+        print(f"Inertial error:            {eigval_error * 100: 0.2f}%")
 
-    return eigval_error, psi
+    return eigval_error, psi, lambdas_true - lambdas, euler_error
 
 def kroneckerDelta(i, j):
     return int(i == j)
@@ -367,6 +368,10 @@ def translateI(I_test, I_dev, m_obj, m_dev, x_dev, x_test):
     r = (m_dev / m_obj) * (x_dev - x_test)
     s = x_test - x_dev
     return I_test - parallelAxisTheorem(m_dev, s) - I_dev - parallelAxisTheorem(m_obj, r)
+
+def translateX(m_obj, m_dev, x_dev, x_test):
+    # x_test  =  (  m_obj * x_obj + m_dev * x_dev   )  /  (m_obj + m_dev)
+    return ( x_test * (m_obj + m_dev)  -  m_dev * x_dev )  /  m_obj
 
 ### Throw Detection ###
 start_threshold = 25
