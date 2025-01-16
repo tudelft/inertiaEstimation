@@ -113,7 +113,4 @@ print(df)
 
 ## Reproduce paper results
 
-If you're running linux, you should be able to do
-1. `pip install -r requirements.txt`
-2. `make figures`
-3. 
+If you're running linux, you should be able to do `make table`.

@@ -13,7 +13,7 @@ CALIBRATION_PATH=$(IN_PATH)/final_calibration
 CALIBRATION_OUT=$(OUT_PATH)/$(CALIBRATION).py
 CALIBRATE=calibrate.py
 ANALYSE=analyse_individually.py
-FIGURES=make_figures.py
+TABLE=make_table.py
 
 calibrate :
 	@echo
@@ -30,12 +30,12 @@ analyse : calibrate
 		$(PY) $(ANALYSE) -vv --plots --output $(OUT_PATH)/$(SERIES) $(SERIES_PATH)/$(var) $(CALIBRATION_OUT); \
 	)
 
-figures : analyse
+table : analyse
 	@echo
-	@echo "making figures for configurations:"
+	@echo "making table for configurations:"
 	@echo $(CONFIGS)
 	@echo
-	$(PY) $(FIGURES) $(foreach var,$(CONFIGS), $(OUT_PATH)/$(SERIES)/$(var).pkl)
-#	ipython -i $(FIGURES) -- $(foreach var,$(CONFIGS), $(OUT_PATH)/$(SERIES)/$(var).pkl)
+	$(PY) $(TABLE) $(foreach var,$(CONFIGS), $(OUT_PATH)/$(SERIES)/$(var).pkl)
+#	ipython -i $(TABLE) -- $(foreach var,$(CONFIGS), $(OUT_PATH)/$(SERIES)/$(var).pkl)
 
-all : figures
+all : table

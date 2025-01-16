@@ -25,7 +25,7 @@ COLUMNS = [
     "Psi", "dphi", "dtheta", "dpsi", "eps", "dlx", "dly", "dlz"
 ]
 
-def analyse_single_file(filename, config, calib, throw_offset=300, filter_cutoff=20, new_motor=False, do_plotting=False):
+def analyse_single_file(filename, config, calib, throw_offset=300, filter_cutoff=20, new_motor=False, save_plots_to=None):
     res_row = dict.fromkeys(COLUMNS) # initualize all columns to NONE
     res_row['id'] = filename
 
@@ -56,7 +56,7 @@ def analyse_single_file(filename, config, calib, throw_offset=300, filter_cutoff
             = lib.signalChain(accelerations, omegas, flywheel_omegas, times, filter_cutoff)
 
     # plot raw and filtered data, if asked
-    if do_plotting:
+    if save_plots_to is not None:
         logger.info(f"plotting raw and filtered input data for {filename}")
         # # Initialise plot
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex="col", gridspec_kw={'height_ratios': [2, 1, 1]})
@@ -143,7 +143,7 @@ def analyse_single_file(filename, config, calib, throw_offset=300, filter_cutoff
         res_row['dly'] = eigval_error_vector[1]
         res_row['dlz'] = eigval_error_vector[2]
 
-    if do_plotting:
+    if save_plots_to is not None:
         simulation_omegas = lib.simulateThrow(I_test,
                                               times[start_idx:],
                                               filtered_omegas[start_idx],
@@ -164,7 +164,7 @@ def analyse_single_file(filename, config, calib, throw_offset=300, filter_cutoff
         ax1.grid()
         ax2.grid()
 
-        outfilename = os.path.splitext(os.path.join("output", f))[0] + "-simulation.pdf"
+        outfilename = os.path.splitext(os.path.join(save_plots_to, f))[0] + "-simulation.pdf"
         pathlib.Path(os.path.dirname(outfilename)).mkdir(parents=True, exist_ok=True)
 
         fig.set_size_inches(10, 2.5)
@@ -180,9 +180,14 @@ if __name__=="__main__":
     parser.add_argument("--output", type=str, metavar="PATH", default=None, help="If passed, will write output dataframe pickle to this folder")
     parser.add_argument("--offset", type=int, default=300, metavar="SAMPLES", help="After detection of throw, skip SAMPLES")
     parser.add_argument("--cutoff", type=float, default=20, help="Lowpass filter cutoff in Hz")
-    parser.add_argument("--plots", action="store_true", help="Give plot output")
+    parser.add_argument("--plots", action="store_true", help="Give plot output. Requires --output to be set")
     parser.add_argument("-v", action="count", help="Increase verbosity (can be passed up to 2 times)")
     args = parser.parse_args()
+
+    # check options
+    if args.plots and not args.output:
+        raise ArgumentError("Must also specify --output, if you use --plots")
+
 
     # global log config for loggers in modules
     logging.basicConfig(level=logging.ERROR)
@@ -216,7 +221,9 @@ if __name__=="__main__":
         logger.error(f"'{config_module}' could not be imported.")
         sys.exit(1)
 
+
     # finally start doing stuff
+    plotpath = os.path.join(args.output, f"{os.path.basename(args.data)}_plots")
     res = pd.DataFrame(columns=COLUMNS)
     for f in tqdm(os.listdir(args.data), desc="Analysing files"):
         if not (f.lower().endswith(".bfl") or f.lower().endswith(".csv")):
@@ -228,8 +235,9 @@ if __name__=="__main__":
                                   throw_offset=args.offset,
                                   filter_cutoff=args.cutoff,
                                   new_motor=True,
-                                  do_plotting=args.plots)
+                                  save_plots_to=plotpath if args.plots else None)
         res.loc[len(res)] = row
+
 
     # output final results table for later analysis
     if args.output is not None:
