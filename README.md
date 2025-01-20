@@ -113,4 +113,4 @@ print(df)
 
 ## Reproduce paper results
 
-If you're running linux, you should be able to do `make table`.
+If you're running linux, you can reproduce our paper's results. See the `for_publication` branch.
