@@ -188,7 +188,6 @@ if __name__=="__main__":
     if args.plots and not args.output:
         raise ArgumentError("Must also specify --output, if you use --plots")
 
-
     # global log config for loggers in modules
     logging.basicConfig(level=logging.ERROR)
 
@@ -212,6 +211,7 @@ if __name__=="__main__":
         sys.exit(1)
 
     # import config
+    args.data = args.data.rstrip("/").rstrip("\\") # remove problematic trailing slashes
     config_module = os.path.join(args.data, "config.py")
     spec = importlib.util.spec_from_file_location("", config_module)
     config = importlib.util.module_from_spec(spec)
