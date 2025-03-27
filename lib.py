@@ -80,6 +80,22 @@ def buildTensor(x):
                      [x[1], x[2], x[4]],
                      [x[3], x[4], x[5]]])
 
+# Builds a physically possible tensor from only positive inputs.
+def buildPhysicalTensor(x):
+    diagonals = [abs(x[0]), abs(x[2]), abs(x[5])]
+    sorted_diagonals = sorted(diagonals)
+    return np.array([[sorted_diagonals[0], x[1], x[3]],
+                     [x[1], sorted_diagonals[1], x[4]],
+                     [x[3], x[4], sorted_diagonals[2]]])
+
+# Builds a physically possible tensor from only positive inputs.
+def buildPhysicalDiagonalTensor(x):
+    diagonals = [abs(x[0]), abs(x[2]), abs(x[5])]
+    sorted_diagonals = sorted(diagonals)
+    return np.array([[sorted_diagonals[0], 0, 0],
+                     [0, sorted_diagonals[1], 0],
+                     [0, 0, sorted_diagonals[2]]])
+
 def buildVector(t):
     return np.array([t[0,0], t[1,0], t[1,1], t[2,0], t[2,1], t[2,2]])
 
@@ -105,7 +121,7 @@ def timePlotVector(t, var, label="", ylabel="", minor=None, major=None, ax=plt, 
     if len(ylabel) > 0:
         pass
         ax.set_ylabel(ylabel)
-    ax.legend(bbox_to_anchor=(1.02, 0.5), loc="center left")
+    ax.legend(bbox_to_anchor=(0.5, 1.02), ncol=3, loc="lower center")
 
 global_filter_cutoff = 1000
 filter_coefs = None
