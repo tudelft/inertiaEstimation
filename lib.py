@@ -88,6 +88,21 @@ def buildPhysicalTensor(x):
                      [x[1], sorted_diagonals[1], x[4]],
                      [x[3], x[4], sorted_diagonals[2]]])
 
+from scipy.stats import special_ortho_group
+
+def buildVeryPhysicalTensor(imin_exp=-4, imax_exp=-2):
+    # approach: - generate physical principal moments (cf triangle inequality)
+    #           - then rotate with a random SO(3) rotation
+    while True:
+        I_exp = np.random.uniform(imin_exp, imax_exp, size=3)
+        I = 10**(I_exp)
+        I_sorted = np.sort(I)  # sorting makes checking easier
+        if I_sorted[0] + I_sorted[1] >= I_sorted[2]:  # triangle inequality
+            break
+    D = np.diag(I_sorted)
+    R = special_ortho_group.rvs(dim=3)
+    return R.T @ D @ R
+
 # Builds a physically possible tensor from only positive inputs.
 def buildPhysicalDiagonalTensor(x):
     diagonals = [abs(x[0]), abs(x[2]), abs(x[5])]

@@ -21,13 +21,18 @@ times = df["time"].values
 dt = (time[-1] - time[0])/len(time)
 
 flywheelOmegas = lib.filterSignalButterworth(-df["omegaFlywheel"].values, 30, dt)
+#flywheelOmegas = lib.filterSignalButterworth(-df["omegaFlywheel"].values, 100, dt)
+#flywheelOmegas = -df["omegaFlywheel"].values
 flywheelOmegasVec = np.empty((times.shape[0], 3))
 flywheelOmegasVec[:, 2] = flywheelOmegas
 flywheelOmegaDotsVec = lib.differentiateVectorSignal(flywheelOmegasVec, dt)
 noise_magnitude = 0.
 
+np.random.seed(42)
+
 for t in inertia_vectors:
-    inertia_tensor = lib.buildPhysicalTensor(t)
+    #inertia_tensor = lib.buildPhysicalTensor(t)
+    inertia_tensor = lib.buildVeryPhysicalTensor(-4, -2.5) # 10^-4 to 10^-2.5 log random space
     print("Ground truth:\n", inertia_tensor)
 
     omega = lib.simulateThrow(inertia_tensor, times, omega_0, flywheelOmegasVec, flywheelOmegaDotsVec)
