@@ -101,6 +101,7 @@ def buildVeryPhysicalTensor(imin_exp=-4, imax_exp=-2):
             break
     D = np.diag(I_sorted)
     R = special_ortho_group.rvs(dim=3)
+    # R = np.eye(3)
     return R.T @ D @ R
 
 # Builds a physically possible tensor from only positive inputs.
@@ -495,7 +496,7 @@ def simulateThrow(inertiaTensor, times, omega_0, flywheel_omegas, flywheel_omega
         t_1 = w_times[0]
         t_2 = w_times[1]
         dt = t_2 - t_1
-        ddt = dt / 100 # Iterate N times between datapoints
+        ddt = dt / 10 # Iterate N times between datapoints
 
         inv = np.linalg.inv(inertiaTensor)
 
