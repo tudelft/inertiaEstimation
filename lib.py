@@ -3,6 +3,7 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
+from tqdm import tqdm
 import scipy
 
 import sys
@@ -259,6 +260,36 @@ def signalChain(accelerations, omegas, flywheel_omegas, times, LP_CUTOFF):
         jerks, omega_dots, flywheel_omega_dots, \
         absolute_accelerations, absolute_omegas, absolute_jerks
 
+# simulation code
+def motorModel(w, wc, tau):
+    return (wc - w) / tau
+
+def motorProfile(t):
+    # simplistic off-idle-full-idle profile
+    wc = np.zeros_like(t)
+    wc[t > 0.1] = -250.
+    wc[(t > 0.2) & (t < 0.4)] = -1500
+
+    return wc
+
+def simulateVectorized(I, iI, j, w, w_dot, wR, wR_dot, dt, steps):
+    # w: body
+    # wR: flywheel
+    # 1. calculate I wdot = -w x (I w)  -  IR wRdot  -  w x (IR wR) 
+    # 2. integrate wdot
+    for i in tqdm(range(steps-1), desc="Simulation: "):
+        Iw = w[i] @ I
+        wxIw = np.cross(w[i], Iw)
+        IRwR = j * wR[i]
+        wxIRwR_x = w[i,:,0,1] * IRwR   # cross product optimzed for knowing xy = 0 fopr the flywheel
+        wxIRwR_y = -w[i,:,0,0] * IRwR
+        IRwRdot_z = j * wR_dot[i]
+        rhs = -wxIw.copy()
+        rhs[:,0,0] -= wxIRwR_x
+        rhs[:,0,1] -= wxIRwR_y
+        rhs[:,0,2] -= IRwRdot_z
+        w_dot[i] = rhs @ iI
+        w[i+1] = w[i] + dt * w_dot[i]
 
 # Severely reduces RAM usage at the cost of slightly increased computation time, due to an
 # increase in matrix multiplications, even though the resulting matrices are smaller
@@ -305,6 +336,50 @@ def computeI(angular_velocities, angular_accelerations, flywheel_angular_velocit
         inertiaCoefficients, residuals, rank, s = np.linalg.lstsq(A, B, rcond=None)
 
     return buildTensor(inertiaCoefficients), residuals
+
+def computeIVectorized(w, wd, wR, wRd):
+    M_eval = w.shape[0]
+    A = np.zeros((M_eval,3,6))
+
+    # A matrix
+    # zeta_X
+    A[:,0,0] = wd[:,0]
+    A[:,0,1] = -w[:,2] * w[:,0] + wd[:,1]
+    A[:,0,2] = -w[:,2] * w[:,1]
+    A[:,0,3] = +w[:,1] * w[:,0] + wd[:,2]
+    A[:,0,4] = w[:,1]*w[:,1] - w[:,2]*w[:,2]
+    A[:,0,5] = w[:,1] * w[:,2]
+
+    # zeta_Y
+    A[:,1,0] = w[:,2] * w[:,0]
+    A[:,1,1] = w[:,2] * w[:,1] + wd[:,0]
+    A[:,1,2] = wd[:,1]
+    A[:,1,3] = w[:,2] * w[:,2] - w[:,0] * w[:,0]
+    A[:,1,4] = -w[:,0] * w[:,1] + wd[:,2]
+    A[:,1,5] = -w[:,0] * w[:,2]
+
+    # zeta_Z
+    A[:,2,0] = -w[:,1] * w[:,0]
+    A[:,2,1] = w[:,0]*w[:,0] - w[:,1]*w[:,1]
+    A[:,2,2] = w[:,0] * w[:,1]
+    A[:,2,3] = -w[:,1] * w[:,2] + wd[:,0]
+    A[:,2,4] = w[:,0] * w[:,2] + wd[:,1]
+    A[:,2,5] = wd[:,2]
+
+    # add body motion to flywheel motion, as wR is in flywheel frame
+    wR = w.copy() + wR.copy()
+    wRd = wd.copy() + wRd.copy()
+
+    global Jflywheel
+    b = -Jflywheel * ( np.cross(w, wR) + wRd )
+
+    Af = A.flatten().reshape(M_eval*3,6)
+    bf = b.flatten()
+    inertiaCoefficients, residuals, rank, s = np.linalg.lstsq(Af, bf, rcond=None)
+
+    errors = Af @ inertiaCoefficients - bf
+
+    return buildTensor(inertiaCoefficients), residuals, errors.reshape((M_eval, 3))
 
 def computeX(angular_velocities, angular_accelerations, linear_accelerations):
     A = []
