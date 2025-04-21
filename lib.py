@@ -105,6 +105,24 @@ def buildVeryPhysicalTensor(imin_exp=-4, imax_exp=-2):
     # R = np.eye(3)
     return R.T @ D @ R
 
+def buildVeryPhysicalTensorTraceFixed(trace=1e-3, cond_min=1., cond_max=10.):
+    # approach: - generate physical principal moments (cf triangle inequality)
+    #           - then rotate with a random SO(3) rotation
+    r = np.random.uniform(low=cond_min, high=cond_max)
+
+    h = trace
+    l = trace / r
+    m = np.random.uniform(low=max(h-l, l), high=h)  # satisfy triangle inequality
+    s = trace / (h + l + m)
+    h *= s
+    l *= s
+    m *= s
+
+    D = np.diag([l,m,h])
+    R = special_ortho_group.rvs(dim=3)
+    # R = np.eye(3)
+    return R.T @ D @ R
+
 # Builds a physically possible tensor from only positive inputs.
 def buildPhysicalDiagonalTensor(x):
     diagonals = [abs(x[0]), abs(x[2]), abs(x[5])]
@@ -267,8 +285,8 @@ def motorModel(w, wc, tau):
 def motorProfile(t):
     # simplistic off-idle-full-idle profile
     wc = np.zeros_like(t)
-    wc[t > 0.1] = -250.
-    wc[(t > 0.2) & (t < 0.4)] = -1500
+    wc[t > 0.25] = -250.
+    wc[(t > 0.35) & (t < 0.55)] = -1500
 
     return wc
 
@@ -320,7 +338,7 @@ def computeI(angular_velocities, angular_accelerations, flywheel_angular_velocit
         zeta = np.matrix([zeta_X, zeta_Y, zeta_Z]).reshape((3, 6))
 
         global Jflywheel
-        mu = -np.cross(omega, Jflywheel * (flywheel_omega + omega)) - Jflywheel * flywheel_omega_dot
+        mu = -np.cross(omega, Jflywheel * (flywheel_omega)) - Jflywheel * flywheel_omega_dot
 
         if OPTIMISATION:
             ATA += zeta.T @ zeta
