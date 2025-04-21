@@ -1,20 +1,23 @@
 import time
 tic = time.time()
 
-import lib
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sbs
+plt.close('all')
 import pandas as pd
 from tqdm import tqdm
-plt.close('all')
+
+import lib
+
 
 #%% general setup, lengths/number of parallel bodies, real-world conditions
 
 # random seed, used 42 for all sims in the paper
 np.random.seed(42)
 
-# number of parallel simulations. 5000 --> 8GB RAM or something like that, increase with care
-N = 500
+# number of parallel simulations. 1000 --> 2GB RAM or something like that, increase with care
+N = 1000
 
 # the following results in M = 20000 timesteps for the simulation, and 4000 for evaluation.
 # do not increase, otherwise itll blow up your RAM
@@ -38,20 +41,44 @@ w_noise_density_real = 0.75e-3
 lp_real = 20.
 
 
-#%% plots
+#%% plot setup
+
+from argparse import ArgumentParser
+parser = ArgumentParser(description="Throw 2 inertia simulations")
+parser.add_argument("plot_type", choices=[
+    'initial_condition',
+    'filtering',
+    'body_type'
+], help="The type of plot to output")
+parser.add_argument("--num", type=int, default=1000, help="Number of simulations (5000 reasonable max)")
+args = parser.parse_args()
 
 resimulate = False
 
-# plot_type = 'initial_condition'
-# plot_type = 'filtering'
-plot_type = 'body_type'
+plot_type = args.plot_type
 
-#%% randomize conditions for throw/body
+if plot_type == 'initial_condition':
+    # plot_series = ['w0_x rad/s', 'w0_y rad/s', 'w0_z rad/s', 'eps %', 'Psi °']
+    # plot_series = ['w0_x rad/s', 'w0_y rad/s', 'w0_z rad/s', 'eps %']
+    # plot_series = ['w0 rad/s', 'eps %', 'Psi °']
+    # plot_series = ['w0 rad/s', 'eps %']
+    plot_series = ['w0 rad/s', 'w0 intermed rad/s', 'eps %', 'Psi °']
+elif plot_type == 'filtering':
+    # plot_series = ['i_R kgm^2', 'trace(I)', 'w noise rad/s/sqrt(Hz)', 'wR noise rad/s/sqrt(Hz)', 'low pass Hz', 'eps %']
+    plot_series = ['i_R kgm^2', 'w noise rad/s/sqrt(Hz)', 'wR noise rad/s/sqrt(Hz)', 'low pass Hz', 'eps %']
+elif plot_type == 'body_type':
+    plot_series = ['min_rel_sep', 'cond(I)', 'eps %', 'Psi °']
+
+
+#%% conditions for throw/body
+
+import scipy
 
 iR = np.repeat(iR_real, N)
 lp = np.repeat(lp_real, N)
-w0 = np.random.uniform(low=2*np.pi, high=+6*np.pi, size=(N,1,3))    # initial w, or low=5
-w0 *= np.random.binomial(1, 0.5, size=(N,1,3)) * 2 - 1
+axs = scipy.stats.special_ortho_group.rvs(dim=3, size=N)[:,np.newaxis,0]
+w0_norm = np.random.uniform(low=2*np.pi, high=+6*np.pi, size=(N,1,1))    # initial w, or low=5
+w0 = axs * w0_norm
 w_noise_density = np.repeat(w_noise_density_real, N)
 wR_noise_density = np.repeat(wR_noise_density_real, N)
 
@@ -65,27 +92,31 @@ for i in range(N):
 
 # override defaults based on plot type
 if plot_type == 'initial_condition':
-    #plot_series = ['w0_x rad/s', 'w0_y rad/s', 'w0_z rad/s', 'eps %', 'Psi °']
-    plot_series = ['w0_x rad/s', 'w0_y rad/s', 'w0_z rad/s', 'eps %']
-
-    w0 = np.random.uniform(low=-6.*np.pi, high=+6*np.pi, size=(N,1,3))
-    #w0 = np.random.uniform(low=1*np.pi, high=+20., size=(N,1,3))    # initial w, or low=5
-    #w0 *= np.random.binomial(1, 0.5, size=(N,1,3)) * 2 - 1
+    axs = scipy.stats.special_ortho_group.rvs(dim=3, size=N)[:,np.newaxis,0]
+    w0_norm = np.random.uniform(low=0., high=+6*np.pi, size=(N,1,1))    # initial w, or low=5
+    w0 = axs * w0_norm
 elif plot_type == 'filtering':
-    # plot_series = ['i_R kgm^2', 'trace(I)', 'w noise rad/s/sqrt(Hz)', 'wR noise rad/s/sqrt(Hz)', 'low pass Hz', 'eps %']
-    plot_series = ['i_R kgm^2', 'w noise rad/s/sqrt(Hz)', 'wR noise rad/s/sqrt(Hz)', 'low pass Hz', 'eps %']
-
-    iR = np.random.uniform(low=iR_real * 0.25, high=iR_real * 1.75, size=N)           # flywheel
-    lp = np.random.uniform(low=lp_real * 1., high=lp_real * 1., size=N)           # flywheel
+    iR = np.random.uniform(low=iR_real * 0.5, high=iR_real * 2., size=N)           # flywheel
+    lp = np.random.uniform(low=lp_real * 0.75, high=lp_real * 1.25, size=N)           # flywheel
     w_noise_density = np.random.uniform(low=0., high=w_noise_density_real*2., size=N)
     wR_noise_density = np.random.uniform(low=0., high=wR_noise_density_real*2., size=N)
 elif plot_type == 'body_type':
-    plot_series = ['min_rel_sep', 'cond(I)', 'eps %', 'Psi °']
-
     for i in range(N):
         # tensor[i] = lib.buildVeryPhysicalTensor(-4, -3)
         tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 1., 10.)
         itensor[i] = np.linalg.inv(tensor[i])
+
+
+
+
+
+
+#%%
+
+############################
+### START OF SIMULATIONS ###
+############################
+
 
 #%% run motor simulation to get wR and wRdot timeseries for motors (same for all simulations)
 
@@ -104,6 +135,7 @@ M = len(t_sim)
 toc = time.time()
 print("")
 print(f"# Finished setup in {toc - tic:.2f} seconds")
+print()
 
 
 #%% simulate 
@@ -116,10 +148,13 @@ omega_dot_sim = np.zeros_like(omega_sim)
 lib.simulateVectorized(tensor, itensor, iR, omega_sim, omega_dot_sim, wR_sim, wRdot_sim, dt_sim, M)
 
 toc = time.time()
-print(f"# Finished vectorized simulation in {toc - tic:.2f} seconds (avg {(toc - tic) / (M*N) * 1e9:.0f}ns per timestep)")
+print(f"# Finished {N} vectorized simulation in {toc - tic:.2f} seconds (avg {(toc - tic) / (M*N) * 1e9:.0f}ns per timestep)")
+print()
 
 
 #%% run our algorithm (only for I, not for imu offset)
+
+tic = time.time()
 
 # get the samples to actually use
 M_eval = int(np.ceil(M / eval_every))
@@ -174,18 +209,23 @@ for i in tqdm(range(N), desc="Inertia estimation: "):
     tensor_est[i] = I_test.copy()
     itensor_est[i] = np.linalg.inv(I_test)
 
-print(f"average error        {100*np.mean(eps):.2f}%. Max error {100*eps.max():.2f}%")
-print(f"average misalignment {180/np.pi*np.mean(Psi):.2f}°. Max error {180/np.pi*Psi.max():.2f}°")
+
+toc = time.time()
+print(f"# Finished analysis in {toc - tic:.2f} seconds")
+
+print()
+print(f"# average error        {100*np.mean(eps):.2f}%. Max error {100*eps.max():.2f}%")
+print(f"# average misalignment {180/np.pi*np.mean(Psi):.2f}°. Max error {180/np.pi*Psi.max():.2f}°")
 
 
 #%% build pandas df for plotting/analysis
-
-import seaborn as sbs
 
 eigs, evecs = np.linalg.eig(tensor)
 traceI = np.linalg.trace(tensor)
 min_rel_sep = np.min(np.abs(eigs - eigs[:, [1,2,0]]) / np.maximum(eigs, eigs[:, [1,2,0]]), axis=1)
 cond = np.linalg.cond(tensor)
+
+U, S, VT = np.linalg.svd(tensor)
 
 df = pd.DataFrame({
     'i_R kgm^2': iR,
@@ -193,6 +233,8 @@ df = pd.DataFrame({
     'w0_x rad/s': w0[:,0,0],
     'w0_y rad/s': w0[:,0,1],
     'w0_z rad/s': w0[:,0,2],
+    'w0 rad/s': w0_norm.squeeze(),
+    'w0 intermed rad/s': (w0 @ U)[:, 0, 1],
     'w noise rad/s/sqrt(Hz)': w_noise_density,
     'wR noise rad/s/sqrt(Hz)': wR_noise_density,
     'trace(I)': traceI,
@@ -202,9 +244,13 @@ df = pd.DataFrame({
     'Psi °': 180. / np.pi * Psi,
 })
 
+#%% pairplots for now
+
 sbs.pairplot(df[plot_series],
              corner=False,   # True: plots only lower triangle
-             diag_kind='hist',)  # histogram on diagonals
+             diag_kind='hist',  # histogram on diagonals
+             plot_kws={"s": 5}, # markersize
+)
 
 plt.suptitle("Pairplot of Parameters and Accuracy")
 plt.tight_layout()
@@ -214,7 +260,6 @@ plt.show()
 
 #%% Re-simulate with estimated tensor and plot
 
-resimulate = False
 if resimulate:
     omega_sim_est = np.zeros_like(omega_sim)
     omega_dot_sim_est = np.zeros_like(omega_dot_sim)

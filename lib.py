@@ -89,8 +89,6 @@ def buildPhysicalTensor(x):
                      [x[1], sorted_diagonals[1], x[4]],
                      [x[3], x[4], sorted_diagonals[2]]])
 
-from scipy.stats import special_ortho_group
-
 def buildVeryPhysicalTensor(imin_exp=-4, imax_exp=-2):
     # approach: - generate physical principal moments (cf triangle inequality)
     #           - then rotate with a random SO(3) rotation
@@ -101,8 +99,7 @@ def buildVeryPhysicalTensor(imin_exp=-4, imax_exp=-2):
         if I_sorted[0] + I_sorted[1] >= I_sorted[2]:  # triangle inequality
             break
     D = np.diag(I_sorted)
-    R = special_ortho_group.rvs(dim=3)
-    # R = np.eye(3)
+    R = scipy.stats.special_ortho_group.rvs(dim=3)
     return R.T @ D @ R
 
 def buildVeryPhysicalTensorTraceFixed(trace=1e-3, cond_min=1., cond_max=10.):
@@ -119,8 +116,7 @@ def buildVeryPhysicalTensorTraceFixed(trace=1e-3, cond_min=1., cond_max=10.):
     m *= s
 
     D = np.diag([l,m,h])
-    R = special_ortho_group.rvs(dim=3)
-    # R = np.eye(3)
+    R = scipy.stats.special_ortho_group.rvs(dim=3)
     return R.T @ D @ R
 
 # Builds a physically possible tensor from only positive inputs.
