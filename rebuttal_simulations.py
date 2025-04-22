@@ -48,9 +48,10 @@ parser = ArgumentParser(description="Throw 2 inertia simulations")
 parser.add_argument("plot_type", choices=[
     'initial_condition',
     'filtering',
-    'body_type'
+    'body_type_1',
+    'body_type_2',
 ], help="The type of plot to output")
-parser.add_argument("--num", type=int, default=1000, help="Number of simulations (5000 reasonable max)")
+parser.add_argument("--num", type=int, default=N, help="Number of simulations (5000 reasonable max)")
 args = parser.parse_args()
 
 resimulate = False
@@ -58,16 +59,21 @@ resimulate = False
 plot_type = args.plot_type
 
 if plot_type == 'initial_condition':
-    # plot_series = ['w0_x rad/s', 'w0_y rad/s', 'w0_z rad/s', 'eps %', 'Psi °']
-    # plot_series = ['w0_x rad/s', 'w0_y rad/s', 'w0_z rad/s', 'eps %']
-    # plot_series = ['w0 rad/s', 'eps %', 'Psi °']
-    # plot_series = ['w0 rad/s', 'eps %']
-    plot_series = ['w0 rad/s', 'w0 intermed rad/s', 'eps %', 'Psi °']
+    # plot_series = ['w0_x rad/s', 'w0_y rad/s', 'w0_z rad/s', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
+    # plot_series = ['w0_x rad/s', 'w0_y rad/s', 'w0_z rad/s', '$\epsilon\ (\%)$']
+    plot_series = ['$\\omega_0\ (\\text{rad}\ s^{-1})$', '$\Psi\ (°)$', '$\epsilon\ (\%)$']
+    # plot_series = ['w0 rad/s', '$\epsilon\ (\%)$']
+    # plot_series = ['w0 rad/s', 'w0 intermed rad/s', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
 elif plot_type == 'filtering':
-    # plot_series = ['i_R kgm^2', 'trace(I)', 'w noise rad/s/sqrt(Hz)', 'wR noise rad/s/sqrt(Hz)', 'low pass Hz', 'eps %']
-    plot_series = ['i_R kgm^2', 'w noise rad/s/sqrt(Hz)', 'wR noise rad/s/sqrt(Hz)', 'low pass Hz', 'eps %']
-elif plot_type == 'body_type':
-    plot_series = ['min_rel_sep', 'cond(I)', 'eps %', 'Psi °']
+    # plot_series = ['i_R kgm^2', 'trace(I)', 'w noise rad/s/sqrt(Hz)', 'wR noise rad/s/sqrt(Hz)', 'low pass Hz', '$\epsilon\ (\%)$']
+    plot_series = ['i_R kgm^2', 'w noise rad/s/sqrt(Hz)', 'wR noise rad/s/sqrt(Hz)', 'low pass Hz', '$\epsilon\ (\%)$']
+elif plot_type == 'body_type_1':
+    # plot_series = ['$\\min\\ \\Delta\\bar\\sigma\ (\%)$', 'cond(I)', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
+    plot_series = ['$\\min\\ \\Delta\\bar\\sigma\ (\%)$', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
+elif plot_type == 'body_type_2':
+    plot_series = ['cond(I)', '$\Psi\ (°)$', '$\epsilon\ (\%)$']
+
+N = args.num
 
 
 #%% conditions for throw/body
@@ -86,7 +92,7 @@ tensor = np.zeros((N,3,3))
 itensor = np.zeros((N,3,3))
 for i in range(N):
     # tensor[i] = lib.buildVeryPhysicalTensor(-4, -3)
-    tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 1., 5.)
+    tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 2., 2.)
     itensor[i] = np.linalg.inv(tensor[i])
 
 
@@ -100,7 +106,12 @@ elif plot_type == 'filtering':
     lp = np.random.uniform(low=lp_real * 0.75, high=lp_real * 1.25, size=N)           # flywheel
     w_noise_density = np.random.uniform(low=0., high=w_noise_density_real*2., size=N)
     wR_noise_density = np.random.uniform(low=0., high=wR_noise_density_real*2., size=N)
-elif plot_type == 'body_type':
+elif plot_type == 'body_type_1':
+    for i in range(N):
+        # tensor[i] = lib.buildVeryPhysicalTensor(-4, -3)
+        tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 1., 10.)
+        itensor[i] = np.linalg.inv(tensor[i])
+elif plot_type == 'body_type_2':
     for i in range(N):
         # tensor[i] = lib.buildVeryPhysicalTensor(-4, -3)
         tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 1., 10.)
@@ -233,29 +244,49 @@ df = pd.DataFrame({
     'w0_x rad/s': w0[:,0,0],
     'w0_y rad/s': w0[:,0,1],
     'w0_z rad/s': w0[:,0,2],
-    'w0 rad/s': w0_norm.squeeze(),
+    '$\\omega_0\ (\\text{rad}\ s^{-1})$': w0_norm.squeeze(),
     'w0 intermed rad/s': (w0 @ U)[:, 0, 1],
     'w noise rad/s/sqrt(Hz)': w_noise_density,
     'wR noise rad/s/sqrt(Hz)': wR_noise_density,
     'trace(I)': traceI,
-    'min_rel_sep': min_rel_sep,
+    '$\\min\\ \\Delta\\bar\\sigma\ (\%)$': 100*min_rel_sep,
     'cond(I)': cond,
-    'eps %': 100. * eps,
-    'Psi °': 180. / np.pi * Psi,
+    '$\epsilon\ (\%)$': 100. * eps,
+    '$\Psi\ (°)$': 180. / np.pi * Psi,
 })
 
 #%% pairplots for now
 
-sbs.pairplot(df[plot_series],
+pg = sbs.pairplot(df[plot_series],
              corner=False,   # True: plots only lower triangle
              diag_kind='hist',  # histogram on diagonals
              plot_kws={"s": 5}, # markersize
+             height=1.3, aspect=10/6
 )
 
 plt.suptitle("Pairplot of Parameters and Accuracy")
 plt.tight_layout()
-plt.subplots_adjust(left=None, bottom=0.066, right=None, top=None, wspace=None, hspace=None)
-plt.show()
+plt.subplots_adjust(left=None, bottom=0.15, right=None, top=None, wspace=None, hspace=None)
+plt.grid()
+#plt.show()
+
+if plot_type == "initial_condition":
+    p99 = df['$\epsilon\ (\%)$'][df['$\omega_0\ (\\text{rad}\ s^{-1})$'] > 2*np.pi].quantile(0.99)
+    pg.axes[2,0].annotate(f"$P_{{99}}(\\epsilon \\mid \\omega_0 > 2\\pi) = {p99:.1f} \%$",
+                          (4, 60),
+                          fontsize=7)
+elif plot_type == "body_type_1":
+    p99 = df['$\Psi\ (°)$'][df['$\\min\\ \\Delta\\bar\\sigma\ (\%)$'] > 2.].quantile(0.99)
+    pg.axes[2,0].annotate(f"$P_{{99}}(\\Psi \\mid \\min\\ \\Delta\\bar\\sigma\ > 2\%) = {p99:.1f}°$",
+                          (5, 60),
+                          fontsize=7)
+elif plot_type == "body_type_2":
+    p99 = df['$\epsilon\ (\%)$'][df['cond(I)'] < 5.].quantile(0.99)
+    pg.axes[2,0].annotate(f"$P_{{99}}(\\epsilon \\mid \\text{{cond}}(I) < 5) = {p99:.1f} \%$",
+                          (1.5, 40.),
+                          fontsize=7)
+
+plt.savefig(f"output/{args.plot_type}.pdf")
 
 
 #%% Re-simulate with estimated tensor and plot
