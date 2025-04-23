@@ -65,13 +65,13 @@ if plot_type == 'initial_condition':
     # plot_series = ['w0 rad/s', '$\epsilon\ (\%)$']
     # plot_series = ['w0 rad/s', 'w0 intermed rad/s', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
 elif plot_type == 'filtering':
-    # plot_series = ['i_R kgm^2', 'trace(I)', 'w noise rad/s/sqrt(Hz)', 'wR noise rad/s/sqrt(Hz)', 'low pass Hz', '$\epsilon\ (\%)$']
-    plot_series = ['i_R kgm^2', 'w noise rad/s/sqrt(Hz)', 'wR noise rad/s/sqrt(Hz)', 'low pass Hz', '$\epsilon\ (\%)$']
+    # plot_series = ['$I_{R_{zz}}\ (kg\ mm^2)$', 'trace(I)', '$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$N_{\\omega_R}\ (\\text{rad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$f_{\\text{low-pass}}\ (Hz)$', '$\epsilon\ (\%)$']
+    plot_series = ['$I_{R_{zz}}\ (kg\ mm^2)$', '$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$N_{\\omega_R}\ (\\text{rad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$f_{\\text{low-pass}}\ (Hz)$', '$\epsilon\ (\%)$']
 elif plot_type == 'body_type_1':
-    # plot_series = ['$\\min\\ \\Delta\\bar\\sigma\ (\%)$', 'cond(I)', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
+    # plot_series = ['$\\min\\ \\Delta\\bar\\sigma\ (\%)$', '$\kappa(I)$', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
     plot_series = ['$\\min\\ \\Delta\\bar\\sigma\ (\%)$', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
 elif plot_type == 'body_type_2':
-    plot_series = ['cond(I)', '$\Psi\ (°)$', '$\epsilon\ (\%)$']
+    plot_series = ['$\kappa(I)$', '$\Psi\ (°)$', '$\epsilon\ (\%)$']
 
 N = args.num
 
@@ -91,8 +91,7 @@ wR_noise_density = np.repeat(wR_noise_density_real, N)
 tensor = np.zeros((N,3,3))
 itensor = np.zeros((N,3,3))
 for i in range(N):
-    # tensor[i] = lib.buildVeryPhysicalTensor(-4, -3)
-    tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 2., 2.)
+    tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 1., 5.)
     itensor[i] = np.linalg.inv(tensor[i])
 
 
@@ -102,22 +101,18 @@ if plot_type == 'initial_condition':
     w0_norm = np.random.uniform(low=0., high=+6*np.pi, size=(N,1,1))    # initial w, or low=5
     w0 = axs * w0_norm
 elif plot_type == 'filtering':
-    iR = np.random.uniform(low=iR_real * 0.5, high=iR_real * 2., size=N)           # flywheel
-    lp = np.random.uniform(low=lp_real * 0.75, high=lp_real * 1.25, size=N)           # flywheel
+    for i in range(N):
+        tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 2., 2.)
+        itensor[i] = np.linalg.inv(tensor[i])
+    iR = np.random.uniform(low=iR_real * 0.25, high=iR_real * 1.75, size=N)           # flywheel
+    lp = np.random.uniform(low=10., high=20., size=N)           # flywheel
     w_noise_density = np.random.uniform(low=0., high=w_noise_density_real*2., size=N)
     wR_noise_density = np.random.uniform(low=0., high=wR_noise_density_real*2., size=N)
-elif plot_type == 'body_type_1':
+elif plot_type == 'body_type_1' or plot_type == 'body_type_2':
     for i in range(N):
         # tensor[i] = lib.buildVeryPhysicalTensor(-4, -3)
         tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 1., 10.)
         itensor[i] = np.linalg.inv(tensor[i])
-elif plot_type == 'body_type_2':
-    for i in range(N):
-        # tensor[i] = lib.buildVeryPhysicalTensor(-4, -3)
-        tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 1., 10.)
-        itensor[i] = np.linalg.inv(tensor[i])
-
-
 
 
 
@@ -239,18 +234,18 @@ cond = np.linalg.cond(tensor)
 U, S, VT = np.linalg.svd(tensor)
 
 df = pd.DataFrame({
-    'i_R kgm^2': iR,
-    'low pass Hz': lp,
+    '$I_{R_{zz}}\ (kg\ mm^2)$': iR * 1e6,
+    '$f_{\\text{low-pass}}\ (Hz)$': lp,
     'w0_x rad/s': w0[:,0,0],
     'w0_y rad/s': w0[:,0,1],
     'w0_z rad/s': w0[:,0,2],
     '$\\omega_0\ (\\text{rad}\ s^{-1})$': w0_norm.squeeze(),
     'w0 intermed rad/s': (w0 @ U)[:, 0, 1],
-    'w noise rad/s/sqrt(Hz)': w_noise_density,
-    'wR noise rad/s/sqrt(Hz)': wR_noise_density,
+    '$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$': 1e3*w_noise_density,
+    '$N_{\\omega_R}\ (\\text{rad}\ s^{-1}\ \\text{Hz}^{-0.5})$': wR_noise_density,
     'trace(I)': traceI,
     '$\\min\\ \\Delta\\bar\\sigma\ (\%)$': 100*min_rel_sep,
-    'cond(I)': cond,
+    '$\kappa(I)$': cond,
     '$\epsilon\ (\%)$': 100. * eps,
     '$\Psi\ (°)$': 180. / np.pi * Psi,
 })
@@ -260,7 +255,7 @@ df = pd.DataFrame({
 pg = sbs.pairplot(df[plot_series],
              corner=False,   # True: plots only lower triangle
              diag_kind='hist',  # histogram on diagonals
-             plot_kws={"s": 5}, # markersize
+             plot_kws={"s": 6}, # markersize
              height=1.3, aspect=10/6
 )
 
@@ -273,15 +268,26 @@ plt.grid()
 if plot_type == "initial_condition":
     p99 = df['$\epsilon\ (\%)$'][df['$\omega_0\ (\\text{rad}\ s^{-1})$'] > 2*np.pi].quantile(0.99)
     pg.axes[2,0].annotate(f"$P_{{99}}(\\epsilon \\mid \\omega_0 > 2\\pi) = {p99:.1f} \%$",
-                          (4, 60),
+                          (5, 60),
                           fontsize=7)
+elif plot_type == "filtering":
+    toplim = 11
+    # pg.axes[4,0].set_ylim(bottom=0, top=toplim)
+    p99 = df['$\epsilon\ (\%)$'][df['$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$'] < 1e3*w_noise_density_real].quantile(0.99)
+    pg.axes[4,1].annotate(f"$P_{{99}}(\\epsilon \\mid N_\\omega < {1e3*w_noise_density_real}) = {p99:.1f} \%$",
+                          (0, 9),
+                          fontsize=7)
+    pg.axes[4,0].plot((1e6*iR_real, 1e6*iR_real), (0, toplim), 'k--', lw=1.)
+    pg.axes[4,1].plot((1e3*w_noise_density_real, 1e3*w_noise_density_real), (0, 7), 'k--', lw=1.)
+    pg.axes[4,2].plot((wR_noise_density_real, wR_noise_density_real), (0, toplim), 'k--', lw=1.)
+    pg.axes[4,3].plot((lp_real, lp_real), (0, toplim), 'k--', lw=1.)
 elif plot_type == "body_type_1":
     p99 = df['$\Psi\ (°)$'][df['$\\min\\ \\Delta\\bar\\sigma\ (\%)$'] > 2.].quantile(0.99)
     pg.axes[2,0].annotate(f"$P_{{99}}(\\Psi \\mid \\min\\ \\Delta\\bar\\sigma\ > 2\%) = {p99:.1f}°$",
                           (5, 60),
                           fontsize=7)
 elif plot_type == "body_type_2":
-    p99 = df['$\epsilon\ (\%)$'][df['cond(I)'] < 5.].quantile(0.99)
+    p99 = df['$\epsilon\ (\%)$'][df['$\kappa(I)$'] < 5.].quantile(0.99)
     pg.axes[2,0].annotate(f"$P_{{99}}(\\epsilon \\mid \\text{{cond}}(I) < 5) = {p99:.1f} \%$",
                           (1.5, 40.),
                           fontsize=7)
