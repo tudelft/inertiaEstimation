@@ -16,8 +16,8 @@ import lib
 # random seed, used 42 for all sims in the paper
 np.random.seed(42)
 
-# number of parallel simulations. 1000 --> 2GB RAM or something like that, increase with care
-N = 1000
+# number of parallel simulations. 2000 --> 4GB RAM or something like that, increase with care
+N = 2000
 
 # the following results in M = 20000 timesteps for the simulation, and 4000 for evaluation.
 # do not increase, otherwise itll blow up your RAM
@@ -68,10 +68,10 @@ elif plot_type == 'filtering':
     # plot_series = ['$I_{R_{zz}}\ (kg\ mm^2)$', 'trace(I)', '$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$N_{\\omega_R}\ (\\text{rad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$f_{\\text{low-pass}}\ (Hz)$', '$\epsilon\ (\%)$']
     plot_series = ['$I_{R_{zz}}\ (kg\ mm^2)$', '$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$N_{\\omega_R}\ (\\text{rad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$f_{\\text{low-pass}}\ (Hz)$', '$\epsilon\ (\%)$']
 elif plot_type == 'body_type_1':
-    # plot_series = ['$\\min\\ \\Delta\\bar\\sigma\ (\%)$', '$\kappa(I)$', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
+    # plot_series = ['$\\min\\ \\Delta\\bar\\sigma\ (\%)$', '$\kappa(I)\ (-)$', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
     plot_series = ['$\\min\\ \\Delta\\bar\\sigma\ (\%)$', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
 elif plot_type == 'body_type_2':
-    plot_series = ['$\kappa(I)$', '$\Psi\ (°)$', '$\epsilon\ (\%)$']
+    plot_series = ['$\kappa(I)\ (-)$', '$\Psi\ (°)$', '$\epsilon\ (\%)$']
 
 N = args.num
 
@@ -97,7 +97,6 @@ for i in range(N):
 
 # override defaults based on plot type
 if plot_type == 'initial_condition':
-    axs = scipy.stats.special_ortho_group.rvs(dim=3, size=N)[:,np.newaxis,0]
     w0_norm = np.random.uniform(low=0., high=+6*np.pi, size=(N,1,1))    # initial w, or low=5
     w0 = axs * w0_norm
 elif plot_type == 'filtering':
@@ -245,7 +244,7 @@ df = pd.DataFrame({
     '$N_{\\omega_R}\ (\\text{rad}\ s^{-1}\ \\text{Hz}^{-0.5})$': wR_noise_density,
     'trace(I)': traceI,
     '$\\min\\ \\Delta\\bar\\sigma\ (\%)$': 100*min_rel_sep,
-    '$\kappa(I)$': cond,
+    '$\kappa(I)\ (-)$': cond,
     '$\epsilon\ (\%)$': 100. * eps,
     '$\Psi\ (°)$': 180. / np.pi * Psi,
 })
@@ -287,8 +286,8 @@ elif plot_type == "body_type_1":
                           (5, 60),
                           fontsize=7)
 elif plot_type == "body_type_2":
-    p99 = df['$\epsilon\ (\%)$'][df['$\kappa(I)$'] < 5.].quantile(0.99)
-    pg.axes[2,0].annotate(f"$P_{{99}}(\\epsilon \\mid \\text{{cond}}(I) < 5) = {p99:.1f} \%$",
+    p99 = df['$\epsilon\ (\%)$'][df['$\kappa(I)\ (-)$'] < 5.].quantile(0.99)
+    pg.axes[2,0].annotate(f"$P_{{99}}(\\epsilon \\mid \\kappa(I) < 5) = {p99:.1f} \%$",
                           (1.5, 40.),
                           fontsize=7)
 
