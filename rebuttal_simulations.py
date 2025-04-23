@@ -47,7 +47,10 @@ from argparse import ArgumentParser
 parser = ArgumentParser(description="Throw 2 inertia simulations")
 parser.add_argument("plot_type", choices=[
     'initial_condition',
-    'filtering',
+    'filtering_iR',
+    'filtering_lp',
+    'filtering_w_noise',
+    'filtering_wR_noise',
     'body_type_1',
     'body_type_2',
 ], help="The type of plot to output")
@@ -64,7 +67,7 @@ if plot_type == 'initial_condition':
     plot_series = ['$\\omega_0\ (\\text{rad}\ s^{-1})$', '$\Psi\ (°)$', '$\epsilon\ (\%)$']
     # plot_series = ['w0 rad/s', '$\epsilon\ (\%)$']
     # plot_series = ['w0 rad/s', 'w0 intermed rad/s', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
-elif plot_type == 'filtering':
+elif plot_type.startswith('filtering'):
     # plot_series = ['$I_{R_{zz}}\ (kg\ mm^2)$', 'trace(I)', '$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$N_{\\omega_R}\ (\\text{rad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$f_{\\text{low-pass}}\ (Hz)$', '$\epsilon\ (\%)$']
     plot_series = ['$I_{R_{zz}}\ (kg\ mm^2)$', '$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$N_{\\omega_R}\ (\\text{rad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$f_{\\text{low-pass}}\ (Hz)$', '$\epsilon\ (\%)$']
 elif plot_type == 'body_type_1':
@@ -80,34 +83,41 @@ N = args.num
 
 import scipy
 
-iR = np.repeat(iR_real, N)
-lp = np.repeat(lp_real, N)
+# init condition
 axs = scipy.stats.special_ortho_group.rvs(dim=3, size=N)[:,np.newaxis,0]
 w0_norm = np.random.uniform(low=2*np.pi, high=+6*np.pi, size=(N,1,1))    # initial w, or low=5
 w0 = axs * w0_norm
-w_noise_density = np.repeat(w_noise_density_real, N)
-wR_noise_density = np.repeat(wR_noise_density_real, N)
 
+# body shape
 tensor = np.zeros((N,3,3))
 itensor = np.zeros((N,3,3))
 for i in range(N):
     tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 1., 5.)
     itensor[i] = np.linalg.inv(tensor[i])
 
+# flywheel size, noise and fitlering
+iR = np.repeat(iR_real, N)
+lp = np.repeat(lp_real, N)
+w_noise_density = np.repeat(w_noise_density_real, N)
+wR_noise_density = np.repeat(wR_noise_density_real, N)
 
 # override defaults based on plot type
 if plot_type == 'initial_condition':
     w0_norm = np.random.uniform(low=0., high=+6*np.pi, size=(N,1,1))    # initial w, or low=5
     w0 = axs * w0_norm
-elif plot_type == 'filtering':
-    for i in range(N):
-        tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 2., 2.)
-        itensor[i] = np.linalg.inv(tensor[i])
-    iR = np.random.uniform(low=iR_real * 0.25, high=iR_real * 1.75, size=N)           # flywheel
-    lp = np.random.uniform(low=10., high=20., size=N)           # flywheel
-    w_noise_density = np.random.uniform(low=0., high=w_noise_density_real*2., size=N)
-    wR_noise_density = np.random.uniform(low=0., high=wR_noise_density_real*2., size=N)
-elif plot_type == 'body_type_1' or plot_type == 'body_type_2':
+elif plot_type.startswith('filtering'):
+    # for i in range(N):
+    #     tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 2., 2.)
+    #     itensor[i] = np.linalg.inv(tensor[i])
+    if plot_type.endswith('iR'):
+        iR = np.random.uniform(low=iR_real * 0.25, high=iR_real * 2., size=N)           # flywheel
+    elif plot_type.endswith('lp'):
+        lp = np.random.uniform(low=4., high=30., size=N)           # flywheel
+    elif plot_type.endswith('w_noise'):
+        w_noise_density = np.random.uniform(low=0., high=w_noise_density_real*2., size=N)
+    elif plot_type.endswith('wR_noise'):
+        wR_noise_density = np.random.uniform(low=0., high=wR_noise_density_real*5., size=N)
+elif plot_type.startswith('body_type'):
     for i in range(N):
         # tensor[i] = lib.buildVeryPhysicalTensor(-4, -3)
         tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 1., 10.)
@@ -254,7 +264,7 @@ df = pd.DataFrame({
 pg = sbs.pairplot(df[plot_series],
              corner=False,   # True: plots only lower triangle
              diag_kind='hist',  # histogram on diagonals
-             plot_kws={"s": 6}, # markersize
+             plot_kws={"s": 6, "rasterized": True}, # markersize
              height=1.3, aspect=10/6
 )
 
@@ -269,15 +279,15 @@ if plot_type == "initial_condition":
     pg.axes[2,0].annotate(f"$P_{{99}}(\\epsilon \\mid \\omega_0 > 2\\pi) = {p99:.1f} \%$",
                           (5, 60),
                           fontsize=7)
-elif plot_type == "filtering":
-    toplim = 11
-    # pg.axes[4,0].set_ylim(bottom=0, top=toplim)
+elif plot_type.startswith("filtering"):
+    toplim = 26
+    pg.axes[4,0].set_ylim(bottom=0, top=toplim)
     p99 = df['$\epsilon\ (\%)$'][df['$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$'] < 1e3*w_noise_density_real].quantile(0.99)
     pg.axes[4,1].annotate(f"$P_{{99}}(\\epsilon \\mid N_\\omega < {1e3*w_noise_density_real}) = {p99:.1f} \%$",
-                          (0, 9),
+                          (0, 18),
                           fontsize=7)
     pg.axes[4,0].plot((1e6*iR_real, 1e6*iR_real), (0, toplim), 'k--', lw=1.)
-    pg.axes[4,1].plot((1e3*w_noise_density_real, 1e3*w_noise_density_real), (0, 7), 'k--', lw=1.)
+    pg.axes[4,1].plot((1e3*w_noise_density_real, 1e3*w_noise_density_real), (0, 15), 'k--', lw=1.)
     pg.axes[4,2].plot((wR_noise_density_real, wR_noise_density_real), (0, toplim), 'k--', lw=1.)
     pg.axes[4,3].plot((lp_real, lp_real), (0, toplim), 'k--', lw=1.)
 elif plot_type == "body_type_1":
@@ -291,7 +301,7 @@ elif plot_type == "body_type_2":
                           (1.5, 40.),
                           fontsize=7)
 
-plt.savefig(f"output/{args.plot_type}.pdf")
+plt.savefig(f"output/{args.plot_type}.pdf", dpi=600, format='pdf')
 
 
 #%% Re-simulate with estimated tensor and plot
