@@ -277,29 +277,29 @@ plt.grid()
 if plot_type == "initial_condition":
     p99 = df['$\epsilon\ (\%)$'][df['$\omega_0\ (\\text{rad}\ s^{-1})$'] > 2*np.pi].quantile(0.99)
     pg.axes[2,0].annotate(f"$P_{{99}}(\\epsilon \\mid \\omega_0 > 2\\pi) = {p99:.1f} \%$",
-                          (5, 60),
-                          fontsize=7)
+                          (3, 75),
+                          fontsize=9)
 elif plot_type.startswith("filtering"):
     toplim = 26
     pg.axes[4,0].set_ylim(bottom=0, top=toplim)
     p99 = df['$\epsilon\ (\%)$'][df['$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$'] < 1e3*w_noise_density_real].quantile(0.99)
     pg.axes[4,1].annotate(f"$P_{{99}}(\\epsilon \\mid N_\\omega < {1e3*w_noise_density_real}) = {p99:.1f} \%$",
                           (0, 18),
-                          fontsize=7)
+                          fontsize=9)
     pg.axes[4,0].plot((1e6*iR_real, 1e6*iR_real), (0, toplim), 'k--', lw=1.)
     pg.axes[4,1].plot((1e3*w_noise_density_real, 1e3*w_noise_density_real), (0, 15), 'k--', lw=1.)
     pg.axes[4,2].plot((wR_noise_density_real, wR_noise_density_real), (0, toplim), 'k--', lw=1.)
     pg.axes[4,3].plot((lp_real, lp_real), (0, toplim), 'k--', lw=1.)
 elif plot_type == "body_type_1":
     p99 = df['$\Psi\ (°)$'][df['$\\min\\ \\Delta\\bar\\sigma\ (\%)$'] > 2.].quantile(0.99)
-    pg.axes[2,0].annotate(f"$P_{{99}}(\\Psi \\mid \\min\\ \\Delta\\bar\\sigma\ > 2\%) = {p99:.1f}°$",
-                          (5, 60),
-                          fontsize=7)
+    pg.axes[2,0].annotate(f"$P_{{99}}(\\Psi \\mid \\min\\ \\Delta\\bar\\sigma > 2) = {p99:.1f}°$",
+                          (3, 60),
+                          fontsize=9)
 elif plot_type == "body_type_2":
     p99 = df['$\epsilon\ (\%)$'][df['$\kappa(I)\ (-)$'] < 5.].quantile(0.99)
     pg.axes[2,0].annotate(f"$P_{{99}}(\\epsilon \\mid \\kappa(I) < 5) = {p99:.1f} \%$",
                           (1.5, 40.),
-                          fontsize=7)
+                          fontsize=9)
 
 plt.savefig(f"output/{args.plot_type}.pdf", dpi=600, format='pdf')
 
