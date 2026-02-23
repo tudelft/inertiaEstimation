@@ -68,8 +68,8 @@ if plot_type == 'initial_condition':
     # plot_series = ['w0 rad/s', '$\epsilon\ (\%)$']
     # plot_series = ['w0 rad/s', 'w0 intermed rad/s', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
 elif plot_type.startswith('filtering'):
-    # plot_series = ['$I_{R_{zz}}\ (kg\ mm^2)$', 'trace(I)', '$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$N_{\\omega_R}\ (\\text{rad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$f_{\\text{low-pass}}\ (Hz)$', '$\epsilon\ (\%)$']
-    plot_series = ['$I_{R_{zz}}\ (kg\ mm^2)$', '$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$N_{\\omega_R}\ (\\text{rad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$f_{\\text{low-pass}}\ (Hz)$', '$\epsilon\ (\%)$']
+    # plot_series = ['$L_R\ (N\ mm\ s)$', 'trace(I)', '$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$N_{\\omega_R}\ (\\text{rad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$f_{\\text{low-pass}}\ (Hz)$', '$\epsilon\ (\%)$']
+    plot_series = ['$L_R\ (N\ mm\ s)$', '$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$N_{\\omega_R}\ (\\text{rad}\ s^{-1}\ \\text{Hz}^{-0.5})$', '$f_{\\text{low-pass}}\ (Hz)$', '$\epsilon\ (\%)$']
 elif plot_type == 'body_type_1':
     # plot_series = ['$\\min\\ \\Delta\\bar\\sigma\ (\%)$', '$\kappa(I)\ (-)$', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
     plot_series = ['$\\min\\ \\Delta\\bar\\sigma\ (\%)$', '$\epsilon\ (\%)$', '$\Psi\ (°)$']
@@ -110,7 +110,7 @@ elif plot_type.startswith('filtering'):
     #     tensor[i] = lib.buildVeryPhysicalTensorTraceFixed(2e-3, 2., 2.)
     #     itensor[i] = np.linalg.inv(tensor[i])
     if plot_type.endswith('iR'):
-        iR = np.random.uniform(low=iR_real * 0.25, high=iR_real * 2., size=N)           # flywheel
+        iR = np.random.uniform(low=iR_real * 0.1, high=iR_real * 2., size=N)           # flywheel
     elif plot_type.endswith('lp'):
         lp = np.random.uniform(low=4., high=30., size=N)           # flywheel
     elif plot_type.endswith('w_noise'):
@@ -243,7 +243,7 @@ cond = np.linalg.cond(tensor)
 U, S, VT = np.linalg.svd(tensor)
 
 df = pd.DataFrame({
-    '$I_{R_{zz}}\ (kg\ mm^2)$': iR * 1e6,
+    '$L_R\ (N\ mm\ s)$': iR * 1500 * 1e3, # magic number defined in lib.py
     '$f_{\\text{low-pass}}\ (Hz)$': lp,
     'w0_x rad/s': w0[:,0,0],
     'w0_y rad/s': w0[:,0,1],
@@ -260,6 +260,12 @@ df = pd.DataFrame({
 })
 
 #%% pairplots for now
+
+import matplotlib
+
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+# matplotlib.rcParams['text.usetex'] = True
 
 pg = sbs.pairplot(df[plot_series],
              corner=False,   # True: plots only lower triangle
@@ -282,17 +288,21 @@ if plot_type == "initial_condition":
 elif plot_type.startswith("filtering"):
     toplim = 26
     pg.axes[4,0].set_ylim(bottom=0, top=toplim)
+    p99iR = df['$\epsilon\ (\%)$'][df['$L_R\ (N\ mm\ s)$'] > 1500*iR_real*1e3].quantile(0.99)
+    pg.axes[4,0].annotate(f"$P_{{99}}(\\epsilon \\mid L_R > {1500*iR_real*1e3}) = {p99iR:.1f} \%$",
+                          (0.5, 18),
+                          fontsize=9)
     p99 = df['$\epsilon\ (\%)$'][df['$N_\\omega\ (\\text{mrad}\ s^{-1}\ \\text{Hz}^{-0.5})$'] < 1e3*w_noise_density_real].quantile(0.99)
     pg.axes[4,1].annotate(f"$P_{{99}}(\\epsilon \\mid N_\\omega < {1e3*w_noise_density_real}) = {p99:.1f} \%$",
                           (0, 18),
                           fontsize=9)
-    pg.axes[4,0].plot((1e6*iR_real, 1e6*iR_real), (0, toplim), 'k--', lw=1.)
+    pg.axes[4,0].plot((1e3*1500*iR_real, 1e3*1500*iR_real), (0, 15), 'k--', lw=1.)
     pg.axes[4,1].plot((1e3*w_noise_density_real, 1e3*w_noise_density_real), (0, 15), 'k--', lw=1.)
     pg.axes[4,2].plot((wR_noise_density_real, wR_noise_density_real), (0, toplim), 'k--', lw=1.)
     pg.axes[4,3].plot((lp_real, lp_real), (0, toplim), 'k--', lw=1.)
 elif plot_type == "body_type_1":
     p99 = df['$\Psi\ (°)$'][df['$\\min\\ \\Delta\\bar\\sigma\ (\%)$'] > 2.].quantile(0.99)
-    pg.axes[2,0].annotate(f"$P_{{99}}(\\Psi \\mid \\min\\ \\Delta\\bar\\sigma > 2) = {p99:.1f}°$",
+    pg.axes[2,0].annotate(f"$P_{{99}}(\\Psi \\mid \\min\\ \\Delta\\bar\\sigma > 2) = {p99:.1f}^\circ$",
                           (3, 60),
                           fontsize=9)
 elif plot_type == "body_type_2":
