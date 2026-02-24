@@ -35,7 +35,7 @@ def analyse_single_file(filename, config, calib, throw_offset=300, filter_cutoff
         return res_row
 
     # check if groundtruth
-    has_groundtruth = hasattr(config, "I_obj")
+    has_groundtruth = hasattr(config, "I_obj") and config.I_obj is not None
     if has_groundtruth and not hasattr(config, "x_obj"):
         config.x_obj = None
 
@@ -114,7 +114,7 @@ def analyse_single_file(filename, config, calib, throw_offset=300, filter_cutoff
     res_row['I_obj'] = I_obj
 
     # compute and log errors, if we have a groundtruth. Maybe simulate and plot
-    if has_groundtruth is None:
+    if not has_groundtruth:
         logger.debug(f"""
 ====================================================================
 ====== Error Report for Object "{config.name}" unavailable; no groundtruth inertia configured
@@ -223,7 +223,9 @@ if __name__=="__main__":
 
 
     # finally start doing stuff
-    plotpath = os.path.join(args.output, f"{os.path.basename(args.data)}_plots")
+    if args.plots:
+        plotpath = os.path.join(args.output, f"{os.path.basename(args.data)}_plots")
+
     res = pd.DataFrame(columns=COLUMNS)
     for f in tqdm(os.listdir(args.data), desc="Analysing files"):
         if not (f.lower().endswith(".bfl") or f.lower().endswith(".csv")):
